@@ -12,6 +12,19 @@
 <body>
 <div id="app">
 
+  <!-- Tela de nome (primeira vez) -->
+  <div id="modal-nome" class="tela-nome hidden">
+    <div class="tela-nome-content">
+      <div class="tela-nome-icon">🍫</div>
+      <h2>Olá! Qual é o seu nome?</h2>
+      <p>Seu nome será salvo nas compras para a Danielle saber quem pediu.</p>
+      <div class="form-group">
+        <input type="text" id="input-nome-usuario" placeholder="Digite seu nome..." maxlength="50" autocomplete="off">
+      </div>
+      <button class="btn-primary" onclick="salvarNomeUsuario()">Entrar</button>
+    </div>
+  </div>
+
   <!-- Tela de carregamento -->
   <div id="loading" class="loading">
     <div class="spinner"></div>
@@ -78,6 +91,14 @@
             <button onclick="changeQty(-1)" class="qty-btn">−</button>
             <input type="number" id="venda-qty" value="1" min="1" oninput="updateVendaPreview()">
             <button onclick="changeQty(1)" class="qty-btn">+</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Comprando como</label>
+          <div class="comprador-info">
+            <span id="label-comprador">—</span>
+            <button class="trocar-nome-btn" onclick="trocarNome()">Trocar nome</button>
           </div>
         </div>
 

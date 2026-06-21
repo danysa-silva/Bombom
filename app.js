@@ -6,6 +6,7 @@ let vendas = [];
 let currentFilter = 'hoje';
 let paymentStatus = 'dinheiro';
 let editingProdutoId = null;
+let nomeUsuario = '';
 
 // ============================================================
 // INICIALIZAÇÃO
@@ -18,6 +19,14 @@ window.addEventListener('load', async function () {
 
   const hoje = new Date().toISOString().split('T')[0];
   document.getElementById('venda-data').value = hoje;
+
+  // Verifica nome salvo
+  nomeUsuario = localStorage.getItem('nomeUsuario') || '';
+  if (!nomeUsuario) {
+    document.getElementById('modal-nome').classList.remove('hidden');
+  } else {
+    document.getElementById('label-comprador').textContent = nomeUsuario;
+  }
 
   await carregarDados();
 });
@@ -65,6 +74,25 @@ async function carregarVendas() {
 
   vendas = data || [];
   renderizarDashboard();
+}
+
+function salvarNomeUsuario() {
+  var nome = document.getElementById('input-nome-usuario').value.trim();
+  if (!nome) { showToast('Digite seu nome para continuar'); return; }
+  nomeUsuario = nome;
+  localStorage.setItem('nomeUsuario', nome);
+  document.getElementById('modal-nome').classList.add('hidden');
+  document.getElementById('label-comprador').textContent = nome;
+}
+
+function trocarNome() {
+  var novoNome = prompt('Qual é o seu nome?', nomeUsuario);
+  if (novoNome && novoNome.trim()) {
+    nomeUsuario = novoNome.trim();
+    localStorage.setItem('nomeUsuario', nomeUsuario);
+    document.getElementById('label-comprador').textContent = nomeUsuario;
+    showToast('Nome atualizado!');
+  }
 }
 
 // ============================================================
@@ -176,7 +204,7 @@ function renderizarDashboard() {
       '<div class="venda-item">' +
         '<div class="venda-item-left">' +
           '<div class="venda-nome">' + escaparHTML(v.produtonome) + '</div>' +
-          '<div class="venda-info">' + v.quantidade + 'x &bull; ' + dataStr + '</div>' +
+          '<div class="venda-info">' + v.quantidade + 'x &bull; ' + dataStr + (v.nomecomprador ? ' &bull; ' + escaparHTML(v.nomecomprador) : '') + '</div>' +
         '</div>' +
         '<div class="venda-item-right">' +
           '<div class="venda-valor">' + formatarDinheiro(v.total) + '</div>' +
@@ -278,7 +306,8 @@ async function registrarVenda() {
       status: paymentStatus,
       data: dataStr,
       total: precovenda * qty,
-      lucro: (precovenda - precocusto) * qty
+      lucro: (precovenda - precocusto) * qty,
+      nomecomprador: nomeUsuario || 'Sem nome'
     };
 
     var { error: vendaError } = await window.db.from('vendas').insert([venda]);

@@ -37,6 +37,76 @@ body {
   position: relative;
 }
 
+/* ===== TELA DE NOME ===== */
+.tela-nome {
+  position: fixed;
+  inset: 0;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 600;
+  padding: 32px 24px;
+}
+
+.tela-nome-content {
+  max-width: 320px;
+  width: 100%;
+  text-align: center;
+}
+
+.tela-nome-icon {
+  font-size: 4rem;
+  margin-bottom: 16px;
+}
+
+.tela-nome-content h2 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-bottom: 10px;
+  color: var(--text);
+}
+
+.tela-nome-content p {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin-bottom: 28px;
+  line-height: 1.6;
+}
+
+.tela-nome-content .form-group {
+  text-align: left;
+  margin-bottom: 16px;
+}
+
+/* ===== COMPRADOR ===== */
+.comprador-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: 10px;
+}
+
+.comprador-info span {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--primary);
+}
+
+.trocar-nome-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
 /* ===== LOADING ===== */
 .loading {
   position: fixed;
