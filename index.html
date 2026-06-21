@@ -5,49 +5,77 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#8b5cf6">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Bombom - Controle de Vendas</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div id="app">
 
-  <!-- Tela de nome (primeira vez) -->
-  <div id="modal-nome" class="tela-nome hidden">
-    <div class="tela-nome-content">
-      <div class="tela-nome-icon">🍫</div>
-      <h2>Olá! Qual é o seu nome?</h2>
-      <p>Seu nome será salvo nas compras para a Danielle saber quem pediu.</p>
-      <div class="form-group">
-        <input type="text" id="input-nome-usuario" placeholder="Digite seu nome..." maxlength="50" autocomplete="off">
-      </div>
-      <button class="btn-primary" onclick="salvarNomeUsuario()">Entrar</button>
+  <!-- ===== TELA INICIAL ===== -->
+  <div id="tela-inicial" class="tela-fullscreen hidden">
+    <div class="tela-fullscreen-content">
+      <div class="tela-icon">🍫</div>
+      <h1>Bombom da Danielle</h1>
+      <p>Como você quer entrar?</p>
+      <button class="btn-primary" onclick="entrarComoCliente()">🛍️ Quero comprar</button>
+      <div class="ou-divider">ou</div>
+      <button class="btn-outline" onclick="mostrarTelaPin()">🔐 Sou administradora</button>
     </div>
   </div>
 
-  <!-- Tela de carregamento -->
+  <!-- ===== TELA PIN ADMIN ===== -->
+  <div id="tela-pin" class="tela-fullscreen hidden">
+    <div class="tela-fullscreen-content">
+      <div class="tela-icon">🔐</div>
+      <h2>Área Administrativa</h2>
+      <p>Digite o PIN de acesso</p>
+      <div class="form-group">
+        <input type="password" id="input-pin" placeholder="PIN..." maxlength="10"
+               autocomplete="off" onkeydown="if(event.key==='Enter') verificarPin()">
+      </div>
+      <button class="btn-primary" onclick="verificarPin()">Entrar</button>
+      <button class="btn-outline" onclick="voltarInicio()" style="margin-top:8px">← Voltar</button>
+    </div>
+  </div>
+
+  <!-- ===== TELA NOME CLIENTE ===== -->
+  <div id="tela-nome-cliente" class="tela-fullscreen hidden">
+    <div class="tela-fullscreen-content">
+      <div class="tela-icon">👋</div>
+      <h2>Olá! Qual é o seu nome?</h2>
+      <p>Seu nome será salvo para a Danielle saber quem fez o pedido.</p>
+      <div class="form-group">
+        <input type="text" id="input-nome-usuario" placeholder="Digite seu nome..."
+               maxlength="50" autocomplete="off" onkeydown="if(event.key==='Enter') salvarNomeUsuario()">
+      </div>
+      <button class="btn-primary" onclick="salvarNomeUsuario()">Entrar</button>
+      <button class="btn-outline" onclick="voltarInicio()" style="margin-top:8px">← Voltar</button>
+    </div>
+  </div>
+
+  <!-- ===== LOADING ===== -->
   <div id="loading" class="loading">
     <div class="spinner"></div>
     <p>Carregando...</p>
   </div>
 
-  <!-- Cabeçalho fixo -->
+  <!-- ===== CABEÇALHO ===== -->
   <header class="header">
     <span id="page-icon">📊</span>
     <h1 id="page-title">Dashboard</h1>
+    <button id="btn-sair" class="btn-sair hidden" onclick="sair()" title="Sair">⬅️</button>
   </header>
 
-  <!-- Conteúdo principal -->
+  <!-- ===== CONTEÚDO PRINCIPAL ===== -->
   <main>
 
-    <!-- ===== DASHBOARD ===== -->
+    <!-- DASHBOARD (admin) -->
     <section id="page-dashboard" class="page active">
       <div class="filter-tabs">
         <button class="filter-btn active" data-filter="hoje" onclick="setFilter('hoje')">Hoje</button>
         <button class="filter-btn" data-filter="semana" onclick="setFilter('semana')">Semana</button>
         <button class="filter-btn" data-filter="mes" onclick="setFilter('mes')">Mês</button>
       </div>
-
       <div class="cards-grid">
         <div class="card card-blue">
           <div class="card-label">Total Vendido</div>
@@ -62,7 +90,7 @@
         <div class="card card-orange">
           <div class="card-label">A Receber</div>
           <div class="card-value" id="dash-a-receber">R$ 0,00</div>
-          <div class="card-sub">vendas a prazo</div>
+          <div class="card-sub">quando receber</div>
         </div>
         <div class="card card-purple">
           <div class="card-label">Lucro</div>
@@ -70,12 +98,11 @@
           <div class="card-sub">lucro bruto</div>
         </div>
       </div>
-
       <div class="section-title">Últimas Vendas</div>
       <div id="dash-ultimas-vendas"></div>
     </section>
 
-    <!-- ===== NOVA VENDA ===== -->
+    <!-- NOVA VENDA (admin) -->
     <section id="page-venda" class="page">
       <div class="form-card">
         <div class="form-group">
@@ -84,7 +111,6 @@
             <option value="">Selecione um produto...</option>
           </select>
         </div>
-
         <div class="form-group">
           <label>Quantidade</label>
           <div class="qty-control">
@@ -93,71 +119,63 @@
             <button onclick="changeQty(1)" class="qty-btn">+</button>
           </div>
         </div>
-
         <div class="form-group">
-          <label>Comprando como</label>
-          <div class="comprador-info">
-            <span id="label-comprador">—</span>
-            <button class="trocar-nome-btn" onclick="trocarNome()">Trocar nome</button>
-          </div>
+          <label>Nome do Cliente</label>
+          <input type="text" id="venda-cliente" placeholder="Nome de quem está comprando...">
         </div>
-
         <div class="form-group">
           <label>Data</label>
           <input type="date" id="venda-data">
         </div>
-
         <div class="form-group">
           <label>Forma de Pagamento</label>
           <div class="payment-btns">
-            <button id="btn-dinheiro" class="pay-btn pay-btn-active" onclick="setPayment('dinheiro')">
-              💵 Dinheiro
-            </button>
-            <button id="btn-pix" class="pay-btn" onclick="setPayment('pix')">
-              📱 PIX
-            </button>
-            <button id="btn-credito" class="pay-btn" onclick="setPayment('credito')">
-              💳 Crédito
-            </button>
-            <button id="btn-prazo" class="pay-btn" onclick="setPayment('prazo')">
-              💰 Quando Receber
-            </button>
+            <button id="btn-dinheiro" class="pay-btn pay-btn-active" onclick="setPayment('dinheiro')">💵 Dinheiro</button>
+            <button id="btn-pix" class="pay-btn" onclick="setPayment('pix')">📱 PIX</button>
+            <button id="btn-credito" class="pay-btn" onclick="setPayment('credito')">💳 Crédito</button>
+            <button id="btn-prazo" class="pay-btn" onclick="setPayment('prazo')">💰 Quando Receber</button>
           </div>
         </div>
-
         <div id="venda-preview" class="venda-preview hidden">
           <div class="preview-row">
-            <span>Total da venda:</span>
+            <span>Total:</span>
             <span id="preview-total" class="preview-value">R$ 0,00</span>
           </div>
           <div class="preview-row">
-            <span>Seu lucro:</span>
+            <span>Lucro:</span>
             <span id="preview-lucro" class="preview-value green">R$ 0,00</span>
           </div>
         </div>
-
-        <button id="btn-registrar" class="btn-primary" onclick="registrarVenda()">
-          Registrar Venda
-        </button>
+        <button id="btn-registrar" class="btn-primary" onclick="registrarVenda()">Registrar Venda</button>
       </div>
     </section>
 
-    <!-- ===== PRODUTOS ===== -->
+    <!-- PRODUTOS (admin) -->
     <section id="page-produtos" class="page">
       <button class="btn-primary" onclick="openProdutoModal()">+ Novo Produto</button>
-      <div id="lista-produtos" style="margin-top: 12px;"></div>
+      <div id="lista-produtos" style="margin-top:12px"></div>
     </section>
 
-    <!-- ===== ESTOQUE ===== -->
+    <!-- ESTOQUE (admin) -->
     <section id="page-estoque" class="page">
       <div id="alertas-estoque"></div>
       <div id="lista-estoque"></div>
     </section>
 
+    <!-- LOJA (cliente) -->
+    <section id="page-loja" class="page">
+      <div id="catalogo-produtos"></div>
+    </section>
+
+    <!-- MEUS PEDIDOS (cliente) -->
+    <section id="page-meus-pedidos" class="page">
+      <div id="lista-meus-pedidos"></div>
+    </section>
+
   </main>
 
-  <!-- Navegação inferior -->
-  <nav class="bottom-nav">
+  <!-- Nav Admin -->
+  <nav id="nav-admin" class="bottom-nav hidden">
     <button class="nav-btn active" onclick="navigate('dashboard')" id="nav-dashboard">
       <span class="nav-icon">📊</span>
       <span class="nav-label">Dashboard</span>
@@ -176,30 +194,40 @@
     </button>
   </nav>
 
+  <!-- Nav Cliente -->
+  <nav id="nav-cliente" class="bottom-nav hidden">
+    <button class="nav-btn active" onclick="navegarCliente('loja')" id="nav-cli-loja">
+      <span class="nav-icon">🛍️</span>
+      <span class="nav-label">Loja</span>
+    </button>
+    <button class="nav-btn" onclick="navegarCliente('meus-pedidos')" id="nav-cli-meus-pedidos">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">Meus Pedidos</span>
+    </button>
+  </nav>
+
   <!-- Modal: Cadastrar / Editar Produto -->
   <div id="modal-produto" class="modal hidden">
     <div class="modal-header">
       <h2 id="modal-produto-title">Novo Produto</h2>
       <button onclick="closeModal('modal-produto')" class="modal-close">✕</button>
     </div>
-
     <div class="form-group">
       <label>Foto do Produto (opcional)</label>
-      <div class="image-upload-area" id="upload-area" onclick="document.getElementById('produto-imagem').click()">
+      <div class="image-upload-area" onclick="document.getElementById('produto-imagem').click()">
         <img id="produto-imagem-preview" src="" alt="" class="hidden">
         <div id="upload-placeholder">
           <div class="upload-icon">📷</div>
           <p>Toque para adicionar foto</p>
         </div>
-        <input type="file" id="produto-imagem" accept="image/*" capture="environment" style="display:none" onchange="previewImagem(this)">
+        <input type="file" id="produto-imagem" accept="image/*" capture="environment"
+               style="display:none" onchange="previewImagem(this)">
       </div>
     </div>
-
     <div class="form-group">
       <label>Nome do Produto</label>
       <input type="text" id="produto-nome" placeholder="Ex: Bombom de Morango">
     </div>
-
     <div class="form-row">
       <div class="form-group">
         <label>Preço de Custo (R$)</label>
@@ -210,7 +238,6 @@
         <input type="number" id="produto-venda" placeholder="0.00" step="0.01" min="0">
       </div>
     </div>
-
     <div class="form-row">
       <div class="form-group">
         <label>Estoque Atual</label>
@@ -221,16 +248,46 @@
         <input type="number" id="produto-estoque-min" placeholder="5" min="0" value="5">
       </div>
     </div>
-
     <button class="btn-primary" onclick="salvarProduto()">Salvar Produto</button>
   </div>
 
-  <!-- Fundo escuro dos modais -->
+  <!-- Modal: Pedido Cliente -->
+  <div id="modal-pedido" class="modal hidden">
+    <div class="modal-header">
+      <h2 id="modal-pedido-titulo">Fazer Pedido</h2>
+      <button onclick="closeModal('modal-pedido')" class="modal-close">✕</button>
+    </div>
+    <div id="modal-pedido-produto-info" class="pedido-produto-info"></div>
+    <div class="form-group">
+      <label>Quantidade</label>
+      <div class="qty-control">
+        <button onclick="changePedidoQty(-1)" class="qty-btn">−</button>
+        <input type="number" id="pedido-qty" value="1" min="1" oninput="updatePedidoPreview()">
+        <button onclick="changePedidoQty(1)" class="qty-btn">+</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Forma de Pagamento</label>
+      <div class="payment-btns">
+        <button id="pedido-btn-dinheiro" class="pay-btn pay-btn-active" onclick="setPedidoPayment('dinheiro')">💵 Dinheiro</button>
+        <button id="pedido-btn-pix" class="pay-btn" onclick="setPedidoPayment('pix')">📱 PIX</button>
+        <button id="pedido-btn-credito" class="pay-btn" onclick="setPedidoPayment('credito')">💳 Crédito</button>
+        <button id="pedido-btn-prazo" class="pay-btn" onclick="setPedidoPayment('prazo')">💰 Quando Receber</button>
+      </div>
+    </div>
+    <div class="venda-preview">
+      <div class="preview-row">
+        <span>Total:</span>
+        <span id="pedido-preview-total" class="preview-value">R$ 0,00</span>
+      </div>
+    </div>
+    <button id="btn-confirmar-pedido" class="btn-primary" onclick="confirmarPedido()">Confirmar Pedido</button>
+  </div>
+
   <div id="overlay" class="overlay hidden" onclick="closeAllModals()"></div>
 
-</div><!-- #app -->
+</div>
 
-<!-- Supabase via CDN (sem precisar instalar nada) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>

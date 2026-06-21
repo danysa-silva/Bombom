@@ -37,8 +37,8 @@ body {
   position: relative;
 }
 
-/* ===== TELA DE NOME ===== */
-.tela-nome {
+/* ===== TELAS FULLSCREEN ===== */
+.tela-fullscreen {
   position: fixed;
   inset: 0;
   background: white;
@@ -49,62 +49,177 @@ body {
   padding: 32px 24px;
 }
 
-.tela-nome-content {
+.tela-fullscreen-content {
   max-width: 320px;
   width: 100%;
   text-align: center;
 }
 
-.tela-nome-icon {
+.tela-icon {
   font-size: 4rem;
   margin-bottom: 16px;
 }
 
-.tela-nome-content h2 {
+.tela-fullscreen-content h1 {
+  font-size: 1.6rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+  color: var(--primary);
+}
+
+.tela-fullscreen-content h2 {
   font-size: 1.4rem;
   font-weight: 800;
   margin-bottom: 10px;
   color: var(--text);
 }
 
-.tela-nome-content p {
+.tela-fullscreen-content p {
   font-size: 0.88rem;
   color: var(--text-muted);
   margin-bottom: 28px;
   line-height: 1.6;
 }
 
-.tela-nome-content .form-group {
+.tela-fullscreen-content .form-group {
   text-align: left;
   margin-bottom: 16px;
 }
 
-/* ===== COMPRADOR ===== */
-.comprador-info {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px;
-  background: var(--bg);
-  border: 2px solid var(--border);
-  border-radius: 10px;
+.ou-divider {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin: 12px 0;
 }
 
-.comprador-info span {
-  font-weight: 700;
+.btn-outline {
+  width: 100%;
+  padding: 13px;
+  background: white;
+  color: var(--primary);
+  border: 2px solid var(--primary);
+  border-radius: 12px;
   font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-outline:active {
+  background: #f5f3ff;
+}
+
+.btn-sair {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  opacity: 0.85;
+}
+
+/* ===== CATÁLOGO CLIENTE ===== */
+.catalogo-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.catalogo-card {
+  background: white;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.08);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.catalogo-card:active {
+  transform: scale(0.97);
+}
+
+.catalogo-card-img {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  display: block;
+}
+
+.catalogo-card-placeholder {
+  width: 100%;
+  height: 110px;
+  background: linear-gradient(135deg, #f5f3ff, #ede9fe);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+}
+
+.catalogo-card-info {
+  padding: 10px 10px 12px;
+}
+
+.catalogo-card-nome {
+  font-weight: 700;
+  font-size: 0.88rem;
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.catalogo-card-preco {
+  font-size: 1rem;
+  font-weight: 800;
   color: var(--primary);
 }
 
-.trocar-nome-btn {
-  border: none;
-  background: transparent;
+.catalogo-card-estoque {
+  font-size: 0.7rem;
   color: var(--text-muted);
-  font-size: 0.78rem;
+  margin-top: 2px;
+}
+
+.pedido-produto-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.pedido-produto-img {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.pedido-produto-placeholder {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f5f3ff, #ede9fe);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  flex-shrink: 0;
+}
+
+.pedido-produto-nome {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.pedido-produto-preco {
+  font-size: 0.88rem;
+  color: var(--primary);
   font-weight: 600;
-  cursor: pointer;
-  text-decoration: underline;
-  padding: 0;
+  margin-top: 2px;
 }
 
 /* ===== LOADING ===== */
@@ -278,6 +393,11 @@ main {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.venda-item-left {
+  flex: 1;
+  min-width: 0;
 }
 
 .venda-nome {
@@ -725,6 +845,10 @@ main {
   grid-template-columns: repeat(4, 1fr);
   z-index: 100;
   padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+#nav-cliente {
+  grid-template-columns: 1fr 1fr;
 }
 
 .nav-btn {
