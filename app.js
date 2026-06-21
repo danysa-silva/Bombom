@@ -649,28 +649,38 @@ async function salvarProduto() {
   if (!nome) { showToast('Informe o nome do produto'); return; }
   if (precovenda <= 0) { showToast('Informe o preço de venda'); return; }
 
-  var dados = { nome, precocusto, precovenda, estoque, estoqueminimo };
+  var dados = { nome: nome, precocusto: precocusto, precovenda: precovenda, estoque: estoque, estoqueminimo: estoqueminimo };
 
   try {
     var produtoId = editingProdutoId;
     if (editingProdutoId) {
-      var { error } = await window.db.from('produtos').update(dados).eq('id', editingProdutoId);
-      if (error) throw error;
+      var resUpd = await window.db.from('produtos').update(dados).eq('id', editingProdutoId);
+      if (resUpd.error) throw new Error('DB: ' + resUpd.error.message);
     } else {
-      var { data: novo, error } = await window.db.from('produtos').insert([dados]).select().single();
-      if (error) throw error;
-      produtoId = novo.id;
+      var resIns = await window.db.from('produtos').insert([dados]).select().single();
+      if (resIns.error) throw new Error('DB: ' + resIns.error.message);
+      produtoId = resIns.data.id;
     }
+
     if (imagemInput.files && imagemInput.files[0]) {
-      var imagemUrl = await uploadImagem(imagemInput.files[0], produtoId);
-      await window.db.from('produtos').update({ imagem_url: imagemUrl }).eq('id', produtoId);
+      try {
+        var imagemUrl = await uploadImagem(imagemInput.files[0], produtoId);
+        await window.db.from('produtos').update({ imagem_url: imagemUrl }).eq('id', produtoId);
+      } catch (imgErr) {
+        console.warn('Foto falhou:', imgErr.message);
+        showToast('Produto salvo! Mas a foto falhou — veja instruções no console.', 5000);
+        closeModal('modal-produto');
+        await carregarProdutos();
+        return;
+      }
     }
+
     showToast(editingProdutoId ? '✅ Produto atualizado!' : '✅ Produto cadastrado!');
     closeModal('modal-produto');
     await carregarProdutos();
   } catch (erro) {
-    console.error(erro);
-    showToast('Erro ao salvar. Tente novamente.');
+    console.error('Erro salvarProduto:', erro.message);
+    showToast('Erro: ' + erro.message, 6000);
   }
 }
 
