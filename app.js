@@ -771,80 +771,66 @@ async function deletarProduto(id, nome) {
 function renderizarReceber() {
   var container = document.getElementById('lista-receber');
 
-  if (vendas.length === 0) {
+  // Só mostra quem tem pendência (prazo)
+  var pendentes = vendas.filter(function (v) { return v.status === 'prazo'; });
+
+  if (pendentes.length === 0) {
     receberGrupos = [];
     container.innerHTML =
-      '<div class="empty-state"><div class="empty-icon">📋</div><p>Nenhuma venda registrada ainda.</p></div>';
+      '<div class="empty-state"><div class="empty-icon">✅</div><p>Nenhum valor a receber!<br>Tudo em dia.</p></div>';
     return;
   }
 
-  // Agrupa TODOS os clientes com TODAS as compras
+  // Agrupa por cliente
   var gruposMap = {};
-  vendas.forEach(function (v) {
+  pendentes.forEach(function (v) {
     var nome = v.nomecomprador || 'Sem nome';
-    if (!gruposMap[nome]) {
-      gruposMap[nome] = { nome: nome, totalGeral: 0, totalPago: 0, totalDever: 0, vendas: [], idsPrazo: [] };
-    }
-    var val = parseFloat(v.total) || 0;
-    gruposMap[nome].totalGeral += val;
+    if (!gruposMap[nome]) gruposMap[nome] = { nome: nome, total: 0, vendas: [], ids: [] };
+    gruposMap[nome].total += parseFloat(v.total) || 0;
     gruposMap[nome].vendas.push(v);
-    if (v.status === 'prazo') {
-      gruposMap[nome].totalDever += val;
-      gruposMap[nome].idsPrazo.push(v.id);
-    } else {
-      gruposMap[nome].totalPago += val;
-    }
+    gruposMap[nome].ids.push(v.id);
   });
 
-  // Ordena: quem deve primeiro
-  receberGrupos = Object.values(gruposMap).sort(function (a, b) { return b.totalDever - a.totalDever; });
+  receberGrupos = Object.values(gruposMap).sort(function (a, b) { return b.total - a.total; });
 
-  var badges = {
-    dinheiro: '<span class="badge badge-pago">✅ Pago</span>',
-    pix:      '<span class="badge badge-pago">✅ Pago</span>',
-    credito:  '<span class="badge badge-pago">✅ Pago</span>',
-    prazo:    '<span class="badge badge-prazo">⏳ A receber</span>'
+  var pagLabels = {
+    dinheiro: '💵 Dinheiro',
+    pix:      '📱 PIX',
+    credito:  '💳 Crédito',
+    prazo:    '💰 Quando Receber'
   };
 
   container.innerHTML = receberGrupos.map(function (grupo, idx) {
     var itens = grupo.vendas.map(function (v) {
       var partes = v.data.split('-');
       var dataStr = partes[2] + '/' + partes[1];
-      var badge = badges[v.status] || badges['prazo'];
-      var btnPago = v.status === 'prazo'
-        ? '<button class="btn-marcar-ind" onclick="marcarVendaPaga(\'' + v.id + '\')">Marcar pago</button>'
-        : '';
+      var formaPag = pagLabels[v.status] || '💰 Quando Receber';
       return (
-        '<div class="receber-linha' + (v.status === 'prazo' ? ' receber-linha-pendente' : '') + '">' +
+        '<div class="receber-linha receber-linha-pendente">' +
           '<div class="receber-linha-esq">' +
             '<div class="receber-linha-produto">' + escaparHTML(v.produtonome) + ' x' + v.quantidade + '</div>' +
-            '<div class="receber-data">' + dataStr + '</div>' +
+            '<div class="receber-data">' + dataStr + ' &bull; ' + formaPag + '</div>' +
           '</div>' +
           '<div class="receber-linha-dir">' +
             '<div class="receber-linha-valor">' + formatarDinheiro(v.total) + '</div>' +
-            badge +
-            btnPago +
+            '<button class="btn-marcar-ind" onclick="marcarVendaPaga(\'' + v.id + '\')">✅ Pago</button>' +
           '</div>' +
         '</div>'
       );
     }).join('');
 
-    var resumo = grupo.totalDever > 0
-      ? '<span class="receber-deve">Deve: ' + formatarDinheiro(grupo.totalDever) + '</span>'
-      : '<span class="receber-quite">✅ Em dia</span>';
-
-    var btnTudo = grupo.idsPrazo.length > 0
-      ? '<button class="btn-confirmar-pago" onclick="marcarClientePago(' + idx + ')">✅ Marcar tudo como pago (' + formatarDinheiro(grupo.totalDever) + ')</button>'
+    var btnTudo = grupo.ids.length > 1
+      ? '<button class="btn-confirmar-pago" onclick="marcarClientePago(' + idx + ')">✅ Marcar tudo como pago</button>'
       : '';
 
     return (
-      '<div class="receber-grupo">' +
+      '<div class="receber-grupo" id="grupo-' + idx + '">' +
         '<div class="receber-header">' +
           '<div>' +
             '<div class="receber-cliente">👤 ' + escaparHTML(grupo.nome) + '</div>' +
-            resumo +
+            '<div class="receber-deve">Deve: ' + formatarDinheiro(grupo.total) + '</div>' +
           '</div>' +
-          '<div class="receber-total-valor">' + formatarDinheiro(grupo.totalGeral) + '<div class="receber-total-label">total gasto</div></div>' +
+          '<div class="receber-qtd">' + grupo.ids.length + ' item' + (grupo.ids.length > 1 ? 's' : '') + '</div>' +
         '</div>' +
         '<div class="receber-itens">' + itens + '</div>' +
         btnTudo +
