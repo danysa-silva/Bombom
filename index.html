@@ -89,8 +89,14 @@
         <div class="form-group">
           <label>Forma de Pagamento</label>
           <div class="payment-btns">
-            <button id="btn-pago" class="pay-btn pay-btn-active" onclick="setPayment('pago')">
-              ✅ Pago Agora
+            <button id="btn-dinheiro" class="pay-btn pay-btn-active" onclick="setPayment('dinheiro')">
+              💵 Dinheiro
+            </button>
+            <button id="btn-pix" class="pay-btn" onclick="setPayment('pix')">
+              📱 PIX
+            </button>
+            <button id="btn-credito" class="pay-btn" onclick="setPayment('credito')">
+              💳 Crédito
             </button>
             <button id="btn-prazo" class="pay-btn" onclick="setPayment('prazo')">
               ⏳ A Prazo

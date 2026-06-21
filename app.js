@@ -4,7 +4,7 @@
 let produtos = [];
 let vendas = [];
 let currentFilter = 'hoje';
-let paymentStatus = 'pago';
+let paymentStatus = 'dinheiro';
 let editingProdutoId = null;
 
 // ============================================================
@@ -136,10 +136,10 @@ function renderizarDashboard() {
   filtradas.forEach(function (v) {
     totalVendido += parseFloat(v.total) || 0;
     lucro += parseFloat(v.lucro) || 0;
-    if (v.status === 'pago') {
-      recebido += parseFloat(v.total) || 0;
-    } else {
+    if (v.status === 'prazo') {
       aReceber += parseFloat(v.total) || 0;
+    } else {
+      recebido += parseFloat(v.total) || 0;
     }
   });
 
@@ -163,8 +163,15 @@ function renderizarDashboard() {
   container.innerHTML = recentes.map(function (v) {
     var partes = v.data.split('-');
     var dataStr = partes[2] + '/' + partes[1];
-    var badgeClass = v.status === 'pago' ? 'badge-pago' : 'badge-prazo';
-    var badgeTexto = v.status === 'pago' ? 'Pago' : 'A prazo';
+    var badgeInfo = {
+      dinheiro: { classe: 'badge-pago', texto: '💵 Dinheiro' },
+      pix:      { classe: 'badge-pago', texto: '📱 PIX' },
+      credito:  { classe: 'badge-pago', texto: '💳 Crédito' },
+      prazo:    { classe: 'badge-prazo', texto: '⏳ A prazo' }
+    };
+    var badge = badgeInfo[v.status] || badgeInfo['prazo'];
+    var badgeClass = badge.classe;
+    var badgeTexto = badge.texto;
     return (
       '<div class="venda-item">' +
         '<div class="venda-item-left">' +
@@ -210,10 +217,10 @@ function changeQty(delta) {
 
 function setPayment(status) {
   paymentStatus = status;
-  document.getElementById('btn-pago').className =
-    'pay-btn' + (status === 'pago' ? ' pay-btn-active' : '');
-  document.getElementById('btn-prazo').className =
-    'pay-btn' + (status === 'prazo' ? ' pay-btn-active' : '');
+  ['dinheiro', 'pix', 'credito', 'prazo'].forEach(function (s) {
+    document.getElementById('btn-' + s).className =
+      'pay-btn' + (status === s ? ' pay-btn-active' : '');
+  });
 }
 
 function updateVendaPreview() {
@@ -288,7 +295,7 @@ async function registrarVenda() {
     document.getElementById('venda-produto').value = '';
     document.getElementById('venda-qty').value = '1';
     document.getElementById('venda-preview').classList.add('hidden');
-    setPayment('pago');
+    setPayment('dinheiro');
 
     await carregarDados();
     navigate('dashboard');
