@@ -319,21 +319,27 @@ function renderizarProdutos() {
     var lucroUnitario = parseFloat(p.precovenda) - parseFloat(p.precocusto);
     var badgeClass = p.estoque === 0 ? 'estoque-zero' :
                      p.estoque <= (p.estoqueminimo || 5) ? 'estoque-baixo' : 'estoque-ok';
+    var imagemHtml = p.imagem_url
+      ? '<img src="' + p.imagem_url + '" class="produto-imagem" alt="' + escaparHTML(p.nome) + '">'
+      : '<div class="produto-imagem-placeholder">🍫</div>';
 
     return (
-      '<div class="produto-item">' +
-        '<div class="produto-header">' +
-          '<div class="produto-nome">' + escaparHTML(p.nome) + '</div>' +
-          '<span class="estoque-badge ' + badgeClass + '">' + p.estoque + ' un.</span>' +
-        '</div>' +
-        '<div class="produto-precos">' +
-          '<span>Custo: <strong>' + formatarDinheiro(p.precocusto) + '</strong></span>' +
-          '<span>Venda: <strong>' + formatarDinheiro(p.precovenda) + '</strong></span>' +
-          '<span>Lucro: <strong class="green">' + formatarDinheiro(lucroUnitario) + '</strong></span>' +
-        '</div>' +
-        '<div class="produto-actions">' +
-          '<button class="btn-secondary" onclick="openProdutoModal(\'' + p.id + '\')">Editar</button>' +
-          '<button class="btn-danger" onclick="deletarProduto(\'' + p.id + '\', \'' + escaparHTML(p.nome) + '\')">Excluir</button>' +
+      '<div class="produto-item" style="padding:0;overflow:hidden">' +
+        imagemHtml +
+        '<div style="padding:12px 14px">' +
+          '<div class="produto-header">' +
+            '<div class="produto-nome">' + escaparHTML(p.nome) + '</div>' +
+            '<span class="estoque-badge ' + badgeClass + '">' + p.estoque + ' un.</span>' +
+          '</div>' +
+          '<div class="produto-precos">' +
+            '<span>Custo: <strong>' + formatarDinheiro(p.precocusto) + '</strong></span>' +
+            '<span>Venda: <strong>' + formatarDinheiro(p.precovenda) + '</strong></span>' +
+            '<span>Lucro: <strong class="green">' + formatarDinheiro(lucroUnitario) + '</strong></span>' +
+          '</div>' +
+          '<div class="produto-actions">' +
+            '<button class="btn-secondary" onclick="openProdutoModal(\'' + p.id + '\')">Editar</button>' +
+            '<button class="btn-danger" onclick="deletarProduto(\'' + p.id + '\', \'' + escaparHTML(p.nome) + '\')">Excluir</button>' +
+          '</div>' +
         '</div>' +
       '</div>'
     );
@@ -343,6 +349,11 @@ function renderizarProdutos() {
 function openProdutoModal(produtoId) {
   editingProdutoId = produtoId || null;
 
+  // Reset imagem
+  document.getElementById('produto-imagem').value = '';
+  document.getElementById('produto-imagem-preview').classList.add('hidden');
+  document.getElementById('upload-placeholder').classList.remove('hidden');
+
   if (produtoId) {
     var p = produtos.find(function (x) { return x.id === produtoId; });
     if (p) {
@@ -351,6 +362,13 @@ function openProdutoModal(produtoId) {
       document.getElementById('produto-venda').value = p.precovenda;
       document.getElementById('produto-estoque').value = p.estoque;
       document.getElementById('produto-estoque-min').value = p.estoqueminimo || 5;
+
+      if (p.imagem_url) {
+        var preview = document.getElementById('produto-imagem-preview');
+        preview.src = p.imagem_url;
+        preview.classList.remove('hidden');
+        document.getElementById('upload-placeholder').classList.add('hidden');
+      }
     }
     document.getElementById('modal-produto-title').textContent = 'Editar Produto';
   } else {
@@ -366,12 +384,40 @@ function openProdutoModal(produtoId) {
   document.getElementById('overlay').classList.remove('hidden');
 }
 
+function previewImagem(input) {
+  if (input.files && input.files[0]) {
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      var preview = document.getElementById('produto-imagem-preview');
+      preview.src = e.target.result;
+      preview.classList.remove('hidden');
+      document.getElementById('upload-placeholder').classList.add('hidden');
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+async function uploadImagem(file, produtoId) {
+  var extensao = file.name.split('.').pop() || 'jpg';
+  var nomeArquivo = 'produtos/' + produtoId + '-' + Date.now() + '.' + extensao;
+
+  var { error } = await window.db.storage
+    .from('imagens')
+    .upload(nomeArquivo, file, { upsert: true });
+
+  if (error) throw error;
+
+  var { data } = window.db.storage.from('imagens').getPublicUrl(nomeArquivo);
+  return data.publicUrl;
+}
+
 async function salvarProduto() {
   var nome = document.getElementById('produto-nome').value.trim();
   var precocusto = parseFloat(document.getElementById('produto-custo').value) || 0;
   var precovenda = parseFloat(document.getElementById('produto-venda').value) || 0;
   var estoque = parseInt(document.getElementById('produto-estoque').value) || 0;
   var estoqueminimo = parseInt(document.getElementById('produto-estoque-min').value) || 5;
+  var imagemInput = document.getElementById('produto-imagem');
 
   if (!nome) { showToast('Informe o nome do produto'); return; }
   if (precovenda <= 0) { showToast('Informe o preço de venda'); return; }
@@ -379,15 +425,23 @@ async function salvarProduto() {
   var dados = { nome, precocusto, precovenda, estoque, estoqueminimo };
 
   try {
+    var produtoId = editingProdutoId;
+
     if (editingProdutoId) {
       var { error } = await window.db.from('produtos').update(dados).eq('id', editingProdutoId);
       if (error) throw error;
-      showToast('✅ Produto atualizado!');
     } else {
-      var { error } = await window.db.from('produtos').insert([dados]);
+      var { data: novo, error } = await window.db.from('produtos').insert([dados]).select().single();
       if (error) throw error;
-      showToast('✅ Produto cadastrado!');
+      produtoId = novo.id;
     }
+
+    if (imagemInput.files && imagemInput.files[0]) {
+      var imagemUrl = await uploadImagem(imagemInput.files[0], produtoId);
+      await window.db.from('produtos').update({ imagem_url: imagemUrl }).eq('id', produtoId);
+    }
+
+    showToast(editingProdutoId ? '✅ Produto atualizado!' : '✅ Produto cadastrado!');
     closeModal('modal-produto');
     await carregarProdutos();
   } catch (erro) {
@@ -446,9 +500,13 @@ function renderizarEstoque() {
     produtos.map(function (p) {
       var badgeClass = p.estoque === 0 ? 'estoque-zero' :
                        p.estoque <= (p.estoqueminimo || 5) ? 'estoque-baixo' : 'estoque-ok';
+      var imgHtml = p.imagem_url
+        ? '<img src="' + p.imagem_url + '" class="estoque-img" alt="">'
+        : '<div class="estoque-img-placeholder">🍫</div>';
       return (
         '<div class="estoque-item">' +
-          '<div>' +
+          imgHtml +
+          '<div style="flex:1">' +
             '<div class="estoque-nome">' + escaparHTML(p.nome) + '</div>' +
             '<div class="estoque-info">Mínimo: ' + (p.estoqueminimo || 5) + ' un.</div>' +
           '</div>' +

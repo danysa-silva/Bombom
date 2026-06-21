@@ -157,6 +157,18 @@
     </div>
 
     <div class="form-group">
+      <label>Foto do Produto (opcional)</label>
+      <div class="image-upload-area" id="upload-area" onclick="document.getElementById('produto-imagem').click()">
+        <img id="produto-imagem-preview" src="" alt="" class="hidden">
+        <div id="upload-placeholder">
+          <div class="upload-icon">📷</div>
+          <p>Toque para adicionar foto</p>
+        </div>
+        <input type="file" id="produto-imagem" accept="image/*" capture="environment" style="display:none" onchange="previewImagem(this)">
+      </div>
+    </div>
+
+    <div class="form-group">
       <label>Nome do Produto</label>
       <input type="text" id="produto-nome" placeholder="Ex: Bombom de Morango">
     </div>
