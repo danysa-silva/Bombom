@@ -770,65 +770,112 @@ async function deletarProduto(id, nome) {
 // ============================================================
 function renderizarReceber() {
   var container = document.getElementById('lista-receber');
-  var pendentes = vendas.filter(function (v) { return v.status === 'prazo'; });
 
-  if (pendentes.length === 0) {
+  if (vendas.length === 0) {
     receberGrupos = [];
     container.innerHTML =
-      '<div class="empty-state"><div class="empty-icon">✅</div>' +
-      '<p>Nenhum valor a receber!<br>Tudo em dia.</p></div>';
+      '<div class="empty-state"><div class="empty-icon">📋</div><p>Nenhuma venda registrada ainda.</p></div>';
     return;
   }
 
+  // Agrupa TODOS os clientes com TODAS as compras
   var gruposMap = {};
-  pendentes.forEach(function (v) {
+  vendas.forEach(function (v) {
     var nome = v.nomecomprador || 'Sem nome';
-    if (!gruposMap[nome]) gruposMap[nome] = { nome: nome, total: 0, vendas: [], ids: [] };
-    gruposMap[nome].total += parseFloat(v.total) || 0;
+    if (!gruposMap[nome]) {
+      gruposMap[nome] = { nome: nome, totalGeral: 0, totalPago: 0, totalDever: 0, vendas: [], idsPrazo: [] };
+    }
+    var val = parseFloat(v.total) || 0;
+    gruposMap[nome].totalGeral += val;
     gruposMap[nome].vendas.push(v);
-    gruposMap[nome].ids.push(v.id);
+    if (v.status === 'prazo') {
+      gruposMap[nome].totalDever += val;
+      gruposMap[nome].idsPrazo.push(v.id);
+    } else {
+      gruposMap[nome].totalPago += val;
+    }
   });
 
-  receberGrupos = Object.values(gruposMap);
+  // Ordena: quem deve primeiro
+  receberGrupos = Object.values(gruposMap).sort(function (a, b) { return b.totalDever - a.totalDever; });
+
+  var badges = {
+    dinheiro: '<span class="badge badge-pago">✅ Pago</span>',
+    pix:      '<span class="badge badge-pago">✅ Pago</span>',
+    credito:  '<span class="badge badge-pago">✅ Pago</span>',
+    prazo:    '<span class="badge badge-prazo">⏳ A receber</span>'
+  };
 
   container.innerHTML = receberGrupos.map(function (grupo, idx) {
     var itens = grupo.vendas.map(function (v) {
       var partes = v.data.split('-');
       var dataStr = partes[2] + '/' + partes[1];
+      var badge = badges[v.status] || badges['prazo'];
+      var btnPago = v.status === 'prazo'
+        ? '<button class="btn-marcar-ind" onclick="marcarVendaPaga(\'' + v.id + '\')">Marcar pago</button>'
+        : '';
       return (
-        '<div class="receber-linha">' +
-          '<span>' + escaparHTML(v.produtonome) + ' x' + v.quantidade +
-            ' <span class="receber-data">(' + dataStr + ')</span></span>' +
-          '<span class="receber-linha-valor">' + formatarDinheiro(v.total) + '</span>' +
+        '<div class="receber-linha' + (v.status === 'prazo' ? ' receber-linha-pendente' : '') + '">' +
+          '<div class="receber-linha-esq">' +
+            '<div class="receber-linha-produto">' + escaparHTML(v.produtonome) + ' x' + v.quantidade + '</div>' +
+            '<div class="receber-data">' + dataStr + '</div>' +
+          '</div>' +
+          '<div class="receber-linha-dir">' +
+            '<div class="receber-linha-valor">' + formatarDinheiro(v.total) + '</div>' +
+            badge +
+            btnPago +
+          '</div>' +
         '</div>'
       );
     }).join('');
+
+    var resumo = grupo.totalDever > 0
+      ? '<span class="receber-deve">Deve: ' + formatarDinheiro(grupo.totalDever) + '</span>'
+      : '<span class="receber-quite">✅ Em dia</span>';
+
+    var btnTudo = grupo.idsPrazo.length > 0
+      ? '<button class="btn-confirmar-pago" onclick="marcarClientePago(' + idx + ')">✅ Marcar tudo como pago (' + formatarDinheiro(grupo.totalDever) + ')</button>'
+      : '';
 
     return (
       '<div class="receber-grupo">' +
         '<div class="receber-header">' +
           '<div>' +
             '<div class="receber-cliente">👤 ' + escaparHTML(grupo.nome) + '</div>' +
-            '<div class="receber-qtd">' + grupo.vendas.length + ' pedido' + (grupo.vendas.length > 1 ? 's' : '') + '</div>' +
+            resumo +
           '</div>' +
-          '<div class="receber-total-valor">' + formatarDinheiro(grupo.total) + '</div>' +
+          '<div class="receber-total-valor">' + formatarDinheiro(grupo.totalGeral) + '<div class="receber-total-label">total gasto</div></div>' +
         '</div>' +
         '<div class="receber-itens">' + itens + '</div>' +
-        '<button class="btn-confirmar-pago" onclick="marcarClientePago(' + idx + ')">✅ Confirmar pagamento</button>' +
+        btnTudo +
       '</div>'
     );
   }).join('');
 }
 
+async function marcarVendaPaga(vendaId) {
+  try {
+    var { error } = await window.db.from('vendas').update({ status: 'dinheiro' }).eq('id', vendaId);
+    if (error) throw error;
+    showToast('✅ Marcado como pago!');
+    await carregarVendas();
+    renderizarReceber();
+    renderizarDashboard();
+  } catch (erro) {
+    console.error(erro);
+    showToast('Erro ao marcar como pago');
+  }
+}
+
 async function marcarClientePago(idx) {
   var grupo = receberGrupos[idx];
-  if (!grupo) return;
-  if (!confirm('Confirmar que ' + grupo.nome + ' pagou ' + formatarDinheiro(grupo.total) + '?')) return;
+  if (!grupo || grupo.idsPrazo.length === 0) return;
+  if (!confirm('Confirmar que ' + grupo.nome + ' pagou ' + formatarDinheiro(grupo.totalDever) + '?')) return;
 
   try {
     var { error } = await window.db.from('vendas')
       .update({ status: 'dinheiro' })
-      .in('id', grupo.ids);
+      .in('id', grupo.idsPrazo);
     if (error) throw error;
     showToast('✅ Pagamento de ' + grupo.nome + ' confirmado!');
     await carregarVendas();

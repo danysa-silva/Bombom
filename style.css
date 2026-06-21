@@ -973,24 +973,85 @@ main {
   margin-bottom: 12px;
 }
 
+.receber-deve {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--orange);
+  margin-top: 2px;
+}
+
+.receber-quite {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--green);
+  margin-top: 2px;
+}
+
+.receber-total-label {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-align: right;
+}
+
 .receber-linha {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   font-size: 0.83rem;
-  padding: 5px 0;
-  color: var(--text);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
   gap: 8px;
+}
+
+.receber-linha:last-child {
+  border-bottom: none;
+}
+
+.receber-linha-pendente {
+  background: #fffbeb;
+  margin: 0 -14px;
+  padding: 8px 14px;
+}
+
+.receber-linha-esq {
+  flex: 1;
+  min-width: 0;
+}
+
+.receber-linha-produto {
+  font-weight: 600;
+  font-size: 0.85rem;
 }
 
 .receber-data {
   color: var(--text-muted);
-  font-size: 0.75rem;
+  font-size: 0.73rem;
+  margin-top: 1px;
+}
+
+.receber-linha-dir {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
 .receber-linha-valor {
   font-weight: 700;
-  flex-shrink: 0;
+  font-size: 0.9rem;
+}
+
+.btn-marcar-ind {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--green);
+  background: #d1fae5;
+  border: 1px solid #6ee7b7;
+  border-radius: 6px;
+  padding: 3px 8px;
+  cursor: pointer;
 }
 
 .btn-confirmar-pago {
