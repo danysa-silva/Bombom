@@ -417,6 +417,24 @@ main {
   margin-left: 12px;
 }
 
+.btn-excluir-venda {
+  display: block;
+  margin-top: 4px;
+  margin-left: auto;
+  background: none;
+  border: none;
+  font-size: 0.95rem;
+  cursor: pointer;
+  opacity: 0.4;
+  transition: opacity 0.15s;
+  padding: 2px 4px;
+}
+
+.btn-excluir-venda:hover,
+.btn-excluir-venda:active {
+  opacity: 1;
+}
+
 .venda-valor {
   font-weight: 800;
   font-size: 0.95rem;

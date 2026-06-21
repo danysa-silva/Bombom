@@ -459,10 +459,31 @@ function renderizarDashboard() {
         '<div class="venda-item-right">' +
           '<div class="venda-valor">' + formatarDinheiro(v.total) + '</div>' +
           '<span class="badge ' + badge.classe + '">' + badge.texto + '</span>' +
+          '<button class="btn-excluir-venda" onclick="deletarVenda(\'' + v.id + '\',\'' + escaparHTML(v.produtonome) + '\',' + v.quantidade + ',\'' + v.produtoid + '\')">🗑</button>' +
         '</div>' +
       '</div>'
     );
   }).join('');
+}
+
+async function deletarVenda(vendaId, produtoNome, quantidade, produtoId) {
+  if (!confirm('Excluir venda de "' + produtoNome + '"?\nO estoque será devolvido.')) return;
+  try {
+    var { error: delError } = await window.db.from('vendas').delete().eq('id', vendaId);
+    if (delError) throw delError;
+
+    // Devolve ao estoque
+    var produto = produtos.find(function (p) { return p.id === produtoId; });
+    if (produto) {
+      await window.db.from('produtos').update({ estoque: produto.estoque + quantidade }).eq('id', produtoId);
+    }
+
+    showToast('🗑 Venda excluída e estoque devolvido');
+    await carregarDados();
+  } catch (erro) {
+    console.error(erro);
+    showToast('Erro ao excluir venda');
+  }
 }
 
 // ============================================================
