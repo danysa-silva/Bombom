@@ -10,6 +10,7 @@ let editingProdutoId = null;
 let nomeUsuario = '';
 let modoAtual = ''; // 'admin' | 'cliente'
 let produtoPedidoAtual = null;
+let receberGrupos = [];
 
 // ============================================================
 // INICIALIZAÇÃO
@@ -365,6 +366,7 @@ async function confirmarPedido() {
 var paginaConfig = {
   dashboard: { titulo: 'Dashboard',  icone: '📊' },
   venda:     { titulo: 'Nova Venda', icone: '🛒' },
+  receber:   { titulo: 'A Receber',  icone: '💰' },
   produtos:  { titulo: 'Produtos',   icone: '🍫' },
   estoque:   { titulo: 'Estoque',    icone: '📦' }
 };
@@ -380,6 +382,8 @@ function navigate(pagina) {
   document.getElementById('page-title').textContent = config.titulo;
   document.getElementById('page-icon').textContent = config.icone;
   window.scrollTo(0, 0);
+
+  if (pagina === 'receber') renderizarReceber();
 }
 
 // ============================================================
@@ -758,6 +762,81 @@ async function deletarProduto(id, nome) {
   } catch (erro) {
     console.error(erro);
     showToast('Erro ao excluir produto');
+  }
+}
+
+// ============================================================
+// A RECEBER (ADMIN)
+// ============================================================
+function renderizarReceber() {
+  var container = document.getElementById('lista-receber');
+  var pendentes = vendas.filter(function (v) { return v.status === 'prazo'; });
+
+  if (pendentes.length === 0) {
+    receberGrupos = [];
+    container.innerHTML =
+      '<div class="empty-state"><div class="empty-icon">✅</div>' +
+      '<p>Nenhum valor a receber!<br>Tudo em dia.</p></div>';
+    return;
+  }
+
+  var gruposMap = {};
+  pendentes.forEach(function (v) {
+    var nome = v.nomecomprador || 'Sem nome';
+    if (!gruposMap[nome]) gruposMap[nome] = { nome: nome, total: 0, vendas: [], ids: [] };
+    gruposMap[nome].total += parseFloat(v.total) || 0;
+    gruposMap[nome].vendas.push(v);
+    gruposMap[nome].ids.push(v.id);
+  });
+
+  receberGrupos = Object.values(gruposMap);
+
+  container.innerHTML = receberGrupos.map(function (grupo, idx) {
+    var itens = grupo.vendas.map(function (v) {
+      var partes = v.data.split('-');
+      var dataStr = partes[2] + '/' + partes[1];
+      return (
+        '<div class="receber-linha">' +
+          '<span>' + escaparHTML(v.produtonome) + ' x' + v.quantidade +
+            ' <span class="receber-data">(' + dataStr + ')</span></span>' +
+          '<span class="receber-linha-valor">' + formatarDinheiro(v.total) + '</span>' +
+        '</div>'
+      );
+    }).join('');
+
+    return (
+      '<div class="receber-grupo">' +
+        '<div class="receber-header">' +
+          '<div>' +
+            '<div class="receber-cliente">👤 ' + escaparHTML(grupo.nome) + '</div>' +
+            '<div class="receber-qtd">' + grupo.vendas.length + ' pedido' + (grupo.vendas.length > 1 ? 's' : '') + '</div>' +
+          '</div>' +
+          '<div class="receber-total-valor">' + formatarDinheiro(grupo.total) + '</div>' +
+        '</div>' +
+        '<div class="receber-itens">' + itens + '</div>' +
+        '<button class="btn-confirmar-pago" onclick="marcarClientePago(' + idx + ')">✅ Confirmar pagamento</button>' +
+      '</div>'
+    );
+  }).join('');
+}
+
+async function marcarClientePago(idx) {
+  var grupo = receberGrupos[idx];
+  if (!grupo) return;
+  if (!confirm('Confirmar que ' + grupo.nome + ' pagou ' + formatarDinheiro(grupo.total) + '?')) return;
+
+  try {
+    var { error } = await window.db.from('vendas')
+      .update({ status: 'dinheiro' })
+      .in('id', grupo.ids);
+    if (error) throw error;
+    showToast('✅ Pagamento de ' + grupo.nome + ' confirmado!');
+    await carregarVendas();
+    renderizarReceber();
+    renderizarDashboard();
+  } catch (erro) {
+    console.error(erro);
+    showToast('Erro ao confirmar pagamento');
   }
 }
 
