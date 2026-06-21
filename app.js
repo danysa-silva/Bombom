@@ -792,66 +792,74 @@ async function deletarProduto(id, nome) {
 function renderizarReceber() {
   var container = document.getElementById('lista-receber');
 
-  // Só mostra quem tem pendência (prazo)
-  var pendentes = vendas.filter(function (v) { return v.status === 'prazo'; });
-
-  if (pendentes.length === 0) {
+  if (vendas.length === 0) {
     receberGrupos = [];
     container.innerHTML =
-      '<div class="empty-state"><div class="empty-icon">✅</div><p>Nenhum valor a receber!<br>Tudo em dia.</p></div>';
+      '<div class="empty-state"><div class="empty-icon">📋</div><p>Nenhuma venda registrada ainda.</p></div>';
     return;
   }
 
-  // Agrupa por cliente
+  // Agrupa TODOS por cliente
   var gruposMap = {};
-  pendentes.forEach(function (v) {
+  vendas.forEach(function (v) {
     var nome = v.nomecomprador || 'Sem nome';
-    if (!gruposMap[nome]) gruposMap[nome] = { nome: nome, total: 0, vendas: [], ids: [] };
-    gruposMap[nome].total += parseFloat(v.total) || 0;
+    if (!gruposMap[nome]) gruposMap[nome] = { nome: nome, totalDever: 0, vendas: [], idsPrazo: [] };
     gruposMap[nome].vendas.push(v);
-    gruposMap[nome].ids.push(v.id);
+    if (v.status === 'prazo') {
+      gruposMap[nome].totalDever += parseFloat(v.total) || 0;
+      gruposMap[nome].idsPrazo.push(v.id);
+    }
   });
 
-  receberGrupos = Object.values(gruposMap).sort(function (a, b) { return b.total - a.total; });
+  // Quem deve aparece primeiro
+  receberGrupos = Object.values(gruposMap).sort(function (a, b) { return b.totalDever - a.totalDever; });
 
-  var pagLabels = {
-    dinheiro: '💵 Dinheiro',
-    pix:      '📱 PIX',
-    credito:  '💳 Crédito',
-    prazo:    '💰 Quando Receber'
+  var pagConfig = {
+    dinheiro: { texto: '💵 Dinheiro', classe: 'badge-pago' },
+    pix:      { texto: '📱 PIX',      classe: 'badge-pago' },
+    credito:  { texto: '💳 Crédito',  classe: 'badge-pago' },
+    prazo:    { texto: '💰 A receber', classe: 'badge-prazo' }
   };
 
   container.innerHTML = receberGrupos.map(function (grupo, idx) {
     var itens = grupo.vendas.map(function (v) {
       var partes = v.data.split('-');
       var dataStr = partes[2] + '/' + partes[1];
-      var formaPag = pagLabels[v.status] || '💰 Quando Receber';
+      var cfg = pagConfig[v.status] || pagConfig['prazo'];
+      var btnPago = v.status === 'prazo'
+        ? '<button class="btn-marcar-ind" onclick="marcarVendaPaga(\'' + v.id + '\')">Marcar pago</button>'
+        : '';
       return (
-        '<div class="receber-linha receber-linha-pendente">' +
+        '<div class="receber-linha' + (v.status === 'prazo' ? ' receber-linha-pendente' : '') + '">' +
           '<div class="receber-linha-esq">' +
             '<div class="receber-linha-produto">' + escaparHTML(v.produtonome) + ' x' + v.quantidade + '</div>' +
-            '<div class="receber-data">' + dataStr + ' &bull; ' + formaPag + '</div>' +
+            '<div class="receber-data">' + dataStr + '</div>' +
           '</div>' +
           '<div class="receber-linha-dir">' +
             '<div class="receber-linha-valor">' + formatarDinheiro(v.total) + '</div>' +
-            '<button class="btn-marcar-ind" onclick="marcarVendaPaga(\'' + v.id + '\')">✅ Pago</button>' +
+            '<span class="badge ' + cfg.classe + '">' + cfg.texto + '</span>' +
+            btnPago +
           '</div>' +
         '</div>'
       );
     }).join('');
 
-    var btnTudo = grupo.ids.length > 1
-      ? '<button class="btn-confirmar-pago" onclick="marcarClientePago(' + idx + ')">✅ Marcar tudo como pago</button>'
+    var resumo = grupo.totalDever > 0
+      ? '<div class="receber-deve">Deve: ' + formatarDinheiro(grupo.totalDever) + '</div>'
+      : '<div class="receber-quite">✅ Em dia</div>';
+
+    var btnTudo = grupo.idsPrazo.length > 1
+      ? '<button class="btn-confirmar-pago" onclick="marcarClientePago(' + idx + ')">✅ Marcar tudo como pago (' + formatarDinheiro(grupo.totalDever) + ')</button>'
       : '';
 
     return (
-      '<div class="receber-grupo" id="grupo-' + idx + '">' +
+      '<div class="receber-grupo">' +
         '<div class="receber-header">' +
           '<div>' +
             '<div class="receber-cliente">👤 ' + escaparHTML(grupo.nome) + '</div>' +
-            '<div class="receber-deve">Deve: ' + formatarDinheiro(grupo.total) + '</div>' +
+            resumo +
           '</div>' +
-          '<div class="receber-qtd">' + grupo.ids.length + ' item' + (grupo.ids.length > 1 ? 's' : '') + '</div>' +
+          '<div class="receber-qtd">' + grupo.vendas.length + ' compra' + (grupo.vendas.length > 1 ? 's' : '') + '</div>' +
         '</div>' +
         '<div class="receber-itens">' + itens + '</div>' +
         btnTudo +
