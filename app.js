@@ -329,6 +329,7 @@ async function confirmarPedido() {
     precovenda: precovenda,
     precocusto: precocusto,
     status: pedidoPaymentStatus,
+    recebido: pedidoPaymentStatus !== 'prazo',
     data: hoje,
     total: precovenda * qty,
     lucro: (precovenda - precocusto) * qty,
@@ -420,8 +421,8 @@ function renderizarDashboard() {
   filtradas.forEach(function (v) {
     totalVendido += parseFloat(v.total) || 0;
     lucro += parseFloat(v.lucro) || 0;
-    if (v.status === 'prazo') aReceber += parseFloat(v.total) || 0;
-    else recebido += parseFloat(v.total) || 0;
+    if (v.recebido) recebido += parseFloat(v.total) || 0;
+    else aReceber += parseFloat(v.total) || 0;
   });
 
   document.getElementById('dash-total-vendido').textContent = formatarDinheiro(totalVendido);
@@ -597,6 +598,7 @@ async function registrarVenda() {
     precovenda: precovenda,
     precocusto: precocusto,
     status: paymentStatus,
+    recebido: paymentStatus !== 'prazo',
     data: dataStr,
     total: precovenda * qty,
     lucro: (precovenda - precocusto) * qty,
@@ -792,33 +794,33 @@ async function deletarProduto(id, nome) {
 function renderizarReceber() {
   var container = document.getElementById('lista-receber');
 
-  if (vendas.length === 0) {
+  // Só mostra vendas não confirmadas
+  var naoRecebidas = vendas.filter(function (v) { return !v.recebido; });
+
+  if (naoRecebidas.length === 0) {
     receberGrupos = [];
     container.innerHTML =
-      '<div class="empty-state"><div class="empty-icon">📋</div><p>Nenhuma venda registrada ainda.</p></div>';
+      '<div class="empty-state"><div class="empty-icon">✅</div><p>Nenhum valor a receber!<br>Tudo confirmado.</p></div>';
     return;
   }
 
-  // Agrupa TODOS por cliente
+  // Agrupa por cliente
   var gruposMap = {};
-  vendas.forEach(function (v) {
+  naoRecebidas.forEach(function (v) {
     var nome = v.nomecomprador || 'Sem nome';
-    if (!gruposMap[nome]) gruposMap[nome] = { nome: nome, totalDever: 0, vendas: [], idsPrazo: [] };
+    if (!gruposMap[nome]) gruposMap[nome] = { nome: nome, total: 0, vendas: [], ids: [] };
+    gruposMap[nome].total += parseFloat(v.total) || 0;
     gruposMap[nome].vendas.push(v);
-    if (v.status === 'prazo') {
-      gruposMap[nome].totalDever += parseFloat(v.total) || 0;
-      gruposMap[nome].idsPrazo.push(v.id);
-    }
+    gruposMap[nome].ids.push(v.id);
   });
 
-  // Quem deve aparece primeiro
-  receberGrupos = Object.values(gruposMap).sort(function (a, b) { return b.totalDever - a.totalDever; });
+  receberGrupos = Object.values(gruposMap).sort(function (a, b) { return b.total - a.total; });
 
   var pagConfig = {
-    dinheiro: { texto: '💵 Dinheiro', classe: 'badge-pago' },
-    pix:      { texto: '📱 PIX',      classe: 'badge-pago' },
-    credito:  { texto: '💳 Crédito',  classe: 'badge-pago' },
-    prazo:    { texto: '💰 A receber', classe: 'badge-prazo' }
+    dinheiro: { texto: '💵 Dinheiro',     classe: 'badge-metodo-din' },
+    pix:      { texto: '📱 PIX',          classe: 'badge-metodo-pix' },
+    credito:  { texto: '💳 Crédito',      classe: 'badge-metodo-cred' },
+    prazo:    { texto: '💰 Quando Receber', classe: 'badge-metodo-prazo' }
   };
 
   container.innerHTML = receberGrupos.map(function (grupo, idx) {
@@ -826,11 +828,8 @@ function renderizarReceber() {
       var partes = v.data.split('-');
       var dataStr = partes[2] + '/' + partes[1];
       var cfg = pagConfig[v.status] || pagConfig['prazo'];
-      var btnPago = v.status === 'prazo'
-        ? '<button class="btn-marcar-ind" onclick="marcarVendaPaga(\'' + v.id + '\')">Marcar pago</button>'
-        : '';
       return (
-        '<div class="receber-linha' + (v.status === 'prazo' ? ' receber-linha-pendente' : '') + '">' +
+        '<div class="receber-linha receber-linha-pendente">' +
           '<div class="receber-linha-esq">' +
             '<div class="receber-linha-produto">' + escaparHTML(v.produtonome) + ' x' + v.quantidade + '</div>' +
             '<div class="receber-data">' + dataStr + '</div>' +
@@ -838,18 +837,14 @@ function renderizarReceber() {
           '<div class="receber-linha-dir">' +
             '<div class="receber-linha-valor">' + formatarDinheiro(v.total) + '</div>' +
             '<span class="badge ' + cfg.classe + '">' + cfg.texto + '</span>' +
-            btnPago +
+            '<button class="btn-marcar-ind" onclick="marcarVendaPaga(\'' + v.id + '\')">✅ Pago</button>' +
           '</div>' +
         '</div>'
       );
     }).join('');
 
-    var resumo = grupo.totalDever > 0
-      ? '<div class="receber-deve">Deve: ' + formatarDinheiro(grupo.totalDever) + '</div>'
-      : '<div class="receber-quite">✅ Em dia</div>';
-
-    var btnTudo = grupo.idsPrazo.length > 1
-      ? '<button class="btn-confirmar-pago" onclick="marcarClientePago(' + idx + ')">✅ Marcar tudo como pago (' + formatarDinheiro(grupo.totalDever) + ')</button>'
+    var btnTudo = grupo.ids.length > 1
+      ? '<button class="btn-confirmar-pago" onclick="marcarClientePago(' + idx + ')">✅ Confirmar tudo pago (' + formatarDinheiro(grupo.total) + ')</button>'
       : '';
 
     return (
@@ -857,9 +852,9 @@ function renderizarReceber() {
         '<div class="receber-header">' +
           '<div>' +
             '<div class="receber-cliente">👤 ' + escaparHTML(grupo.nome) + '</div>' +
-            resumo +
+            '<div class="receber-deve">A receber: ' + formatarDinheiro(grupo.total) + '</div>' +
           '</div>' +
-          '<div class="receber-qtd">' + grupo.vendas.length + ' compra' + (grupo.vendas.length > 1 ? 's' : '') + '</div>' +
+          '<div class="receber-qtd">' + grupo.ids.length + ' item' + (grupo.ids.length > 1 ? 's' : '') + '</div>' +
         '</div>' +
         '<div class="receber-itens">' + itens + '</div>' +
         btnTudo +
@@ -870,29 +865,29 @@ function renderizarReceber() {
 
 async function marcarVendaPaga(vendaId) {
   try {
-    var { error } = await window.db.from('vendas').update({ status: 'dinheiro' }).eq('id', vendaId);
+    var { error } = await window.db.from('vendas').update({ recebido: true }).eq('id', vendaId);
     if (error) throw error;
-    showToast('✅ Marcado como pago!');
+    showToast('✅ Pagamento confirmado!');
     await carregarVendas();
     renderizarReceber();
     renderizarDashboard();
   } catch (erro) {
     console.error(erro);
-    showToast('Erro ao marcar como pago');
+    showToast('Erro ao confirmar pagamento');
   }
 }
 
 async function marcarClientePago(idx) {
   var grupo = receberGrupos[idx];
-  if (!grupo || grupo.idsPrazo.length === 0) return;
-  if (!confirm('Confirmar que ' + grupo.nome + ' pagou ' + formatarDinheiro(grupo.totalDever) + '?')) return;
+  if (!grupo || grupo.ids.length === 0) return;
+  if (!confirm('Confirmar que ' + grupo.nome + ' pagou ' + formatarDinheiro(grupo.total) + '?')) return;
 
   try {
     var { error } = await window.db.from('vendas')
-      .update({ status: 'dinheiro' })
-      .in('id', grupo.idsPrazo);
+      .update({ recebido: true })
+      .in('id', grupo.ids);
     if (error) throw error;
-    showToast('✅ Pagamento de ' + grupo.nome + ' confirmado!');
+    showToast('✅ Tudo pago por ' + grupo.nome + '!');
     await carregarVendas();
     renderizarReceber();
     renderizarDashboard();
