@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#8b5cf6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Bombom - Controle de Vendas</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- Tela de carregamento -->
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+    <p>Carregando...</p>
+  </div>
+
+  <!-- Cabeçalho fixo -->
+  <header class="header">
+    <span id="page-icon">📊</span>
+    <h1 id="page-title">Dashboard</h1>
+  </header>
+
+  <!-- Conteúdo principal -->
+  <main>
+
+    <!-- ===== DASHBOARD ===== -->
+    <section id="page-dashboard" class="page active">
+      <div class="filter-tabs">
+        <button class="filter-btn active" data-filter="hoje" onclick="setFilter('hoje')">Hoje</button>
+        <button class="filter-btn" data-filter="semana" onclick="setFilter('semana')">Semana</button>
+        <button class="filter-btn" data-filter="mes" onclick="setFilter('mes')">Mês</button>
+      </div>
+
+      <div class="cards-grid">
+        <div class="card card-blue">
+          <div class="card-label">Total Vendido</div>
+          <div class="card-value" id="dash-total-vendido">R$ 0,00</div>
+          <div class="card-sub" id="dash-qtd-vendas">0 vendas</div>
+        </div>
+        <div class="card card-green">
+          <div class="card-label">Recebido</div>
+          <div class="card-value" id="dash-recebido">R$ 0,00</div>
+          <div class="card-sub">já em mãos</div>
+        </div>
+        <div class="card card-orange">
+          <div class="card-label">A Receber</div>
+          <div class="card-value" id="dash-a-receber">R$ 0,00</div>
+          <div class="card-sub">vendas a prazo</div>
+        </div>
+        <div class="card card-purple">
+          <div class="card-label">Lucro</div>
+          <div class="card-value" id="dash-lucro">R$ 0,00</div>
+          <div class="card-sub">lucro bruto</div>
+        </div>
+      </div>
+
+      <div class="section-title">Últimas Vendas</div>
+      <div id="dash-ultimas-vendas"></div>
+    </section>
+
+    <!-- ===== NOVA VENDA ===== -->
+    <section id="page-venda" class="page">
+      <div class="form-card">
+        <div class="form-group">
+          <label>Produto</label>
+          <select id="venda-produto" onchange="updateVendaPreview()">
+            <option value="">Selecione um produto...</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Quantidade</label>
+          <div class="qty-control">
+            <button onclick="changeQty(-1)" class="qty-btn">−</button>
+            <input type="number" id="venda-qty" value="1" min="1" oninput="updateVendaPreview()">
+            <button onclick="changeQty(1)" class="qty-btn">+</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Data</label>
+          <input type="date" id="venda-data">
+        </div>
+
+        <div class="form-group">
+          <label>Forma de Pagamento</label>
+          <div class="payment-btns">
+            <button id="btn-pago" class="pay-btn pay-btn-active" onclick="setPayment('pago')">
+              ✅ Pago Agora
+            </button>
+            <button id="btn-prazo" class="pay-btn" onclick="setPayment('prazo')">
+              ⏳ A Prazo
+            </button>
+          </div>
+        </div>
+
+        <div id="venda-preview" class="venda-preview hidden">
+          <div class="preview-row">
+            <span>Total da venda:</span>
+            <span id="preview-total" class="preview-value">R$ 0,00</span>
+          </div>
+          <div class="preview-row">
+            <span>Seu lucro:</span>
+            <span id="preview-lucro" class="preview-value green">R$ 0,00</span>
+          </div>
+        </div>
+
+        <button id="btn-registrar" class="btn-primary" onclick="registrarVenda()">
+          Registrar Venda
+        </button>
+      </div>
+    </section>
+
+    <!-- ===== PRODUTOS ===== -->
+    <section id="page-produtos" class="page">
+      <button class="btn-primary" onclick="openProdutoModal()">+ Novo Produto</button>
+      <div id="lista-produtos" style="margin-top: 12px;"></div>
+    </section>
+
+    <!-- ===== ESTOQUE ===== -->
+    <section id="page-estoque" class="page">
+      <div id="alertas-estoque"></div>
+      <div id="lista-estoque"></div>
+    </section>
+
+  </main>
+
+  <!-- Navegação inferior -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" onclick="navigate('dashboard')" id="nav-dashboard">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Dashboard</span>
+    </button>
+    <button class="nav-btn" onclick="navigate('venda')" id="nav-venda">
+      <span class="nav-icon">🛒</span>
+      <span class="nav-label">Vender</span>
+    </button>
+    <button class="nav-btn" onclick="navigate('produtos')" id="nav-produtos">
+      <span class="nav-icon">🍫</span>
+      <span class="nav-label">Produtos</span>
+    </button>
+    <button class="nav-btn" onclick="navigate('estoque')" id="nav-estoque">
+      <span class="nav-icon">📦</span>
+      <span class="nav-label">Estoque</span>
+    </button>
+  </nav>
+
+  <!-- Modal: Cadastrar / Editar Produto -->
+  <div id="modal-produto" class="modal hidden">
+    <div class="modal-header">
+      <h2 id="modal-produto-title">Novo Produto</h2>
+      <button onclick="closeModal('modal-produto')" class="modal-close">✕</button>
+    </div>
+
+    <div class="form-group">
+      <label>Nome do Produto</label>
+      <input type="text" id="produto-nome" placeholder="Ex: Bombom de Morango">
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Preço de Custo (R$)</label>
+        <input type="number" id="produto-custo" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <div class="form-group">
+        <label>Preço de Venda (R$)</label>
+        <input type="number" id="produto-venda" placeholder="0.00" step="0.01" min="0">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Estoque Atual</label>
+        <input type="number" id="produto-estoque" placeholder="0" min="0">
+      </div>
+      <div class="form-group">
+        <label>Alerta Mínimo</label>
+        <input type="number" id="produto-estoque-min" placeholder="5" min="0" value="5">
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="salvarProduto()">Salvar Produto</button>
+  </div>
+
+  <!-- Fundo escuro dos modais -->
+  <div id="overlay" class="overlay hidden" onclick="closeAllModals()"></div>
+
+</div><!-- #app -->
+
+<!-- Firebase via CDN (sem precisar instalar nada) -->
+<script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
