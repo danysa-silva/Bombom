@@ -167,7 +167,7 @@ function renderizarDashboard() {
       dinheiro: { classe: 'badge-pago', texto: '💵 Dinheiro' },
       pix:      { classe: 'badge-pago', texto: '📱 PIX' },
       credito:  { classe: 'badge-pago', texto: '💳 Crédito' },
-      prazo:    { classe: 'badge-prazo', texto: '⏳ A prazo' }
+      prazo:    { classe: 'badge-prazo', texto: '💰 Quando Receber' }
     };
     var badge = badgeInfo[v.status] || badgeInfo['prazo'];
     var badgeClass = badge.classe;
