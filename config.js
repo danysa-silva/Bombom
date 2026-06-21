@@ -6,3 +6,6 @@ window.db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // PIN de acesso da administradora (pode trocar para o que quiser)
 window.ADMIN_PIN = '1234';
+
+// Chave PIX para recebimento
+window.PIX_KEY = 'sejaeter@gmail.com';

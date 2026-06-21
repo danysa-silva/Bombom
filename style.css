@@ -515,6 +515,38 @@ main {
   flex-shrink: 0;
 }
 
+/* ===== GRADE DE VENDA (ADMIN) ===== */
+.venda-grid {
+  margin-bottom: 16px;
+}
+
+.venda-card {
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  border: 2px solid transparent;
+}
+
+.venda-card-ativo {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(139,92,246,0.2) !important;
+}
+
+.venda-card-sem-estoque {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.venda-produto-sel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f5f3ff;
+  border: 2px solid var(--primary);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
 /* ===== FORMULÁRIOS ===== */
 .form-card {
   background: white;
@@ -630,6 +662,47 @@ main {
   border-color: var(--primary);
   background: #f5f3ff;
   color: var(--primary);
+}
+
+/* ===== PIX INFO ===== */
+.pix-info {
+  background: #eff6ff;
+  border: 2px solid #3b82f6;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  text-align: center;
+}
+
+.pix-info-titulo {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #1d4ed8;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pix-key {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #1e40af;
+  background: white;
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  word-break: break-all;
+  transition: background 0.15s;
+}
+
+.pix-key:active {
+  background: #dbeafe;
+}
+
+.pix-copy-hint {
+  font-size: 0.72rem;
+  color: #3b82f6;
+  margin-top: 6px;
 }
 
 /* ===== PRÉVIA DA VENDA ===== */

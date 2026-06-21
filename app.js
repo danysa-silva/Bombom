@@ -281,6 +281,23 @@ function setPedidoPayment(status) {
     document.getElementById('pedido-btn-' + s).className =
       'pay-btn' + (status === s ? ' pay-btn-active' : '');
   });
+  var pixInfo = document.getElementById('pedido-pix-info');
+  if (status === 'pix') {
+    document.getElementById('pedido-pix-chave').textContent = window.PIX_KEY || '';
+    pixInfo.classList.remove('hidden');
+  } else {
+    pixInfo.classList.add('hidden');
+  }
+}
+
+function copiarPix() {
+  var chave = window.PIX_KEY || '';
+  if (!chave) return;
+  navigator.clipboard.writeText(chave).then(function () {
+    showToast('✅ Chave PIX copiada!');
+  }).catch(function () {
+    showToast('Chave PIX: ' + chave, 5000);
+  });
 }
 
 function updatePedidoPreview() {
@@ -447,19 +464,64 @@ function renderizarDashboard() {
 // ============================================================
 // NOVA VENDA (ADMIN)
 // ============================================================
+var vendaProdutoId = null;
+
 function atualizarSelectVenda() {
-  var select = document.getElementById('venda-produto');
-  var valorAtual = select.value;
-  select.innerHTML = '<option value="">Selecione um produto...</option>';
-  produtos.forEach(function (p) {
-    var opt = document.createElement('option');
-    opt.value = p.id;
-    var textoEstoque = p.estoque > 0 ? '(estoque: ' + p.estoque + ')' : '❌ SEM ESTOQUE';
-    opt.textContent = p.nome + ' — ' + formatarDinheiro(p.precovenda) + ' ' + textoEstoque;
-    if (p.estoque === 0) opt.disabled = true;
-    select.appendChild(opt);
-  });
-  if (valorAtual) select.value = valorAtual;
+  var grid = document.getElementById('venda-produtos-grid');
+  if (!grid) return;
+
+  if (produtos.length === 0) {
+    grid.innerHTML = '<div class="empty-state"><div class="empty-icon">🍫</div><p>Nenhum produto cadastrado</p></div>';
+    return;
+  }
+
+  grid.innerHTML = '<div class="catalogo-grid">' +
+    produtos.map(function (p) {
+      var semEstoque = p.estoque === 0;
+      var imgHtml = p.imagem_url
+        ? '<img src="' + p.imagem_url + '" class="catalogo-card-img" alt="">'
+        : '<div class="catalogo-card-placeholder">🍫</div>';
+      return (
+        '<div class="catalogo-card venda-card' + (semEstoque ? ' venda-card-sem-estoque' : '') + '" ' +
+          (semEstoque ? '' : 'onclick="selecionarProdutoVenda(\'' + p.id + '\')"') +
+          ' id="venda-card-' + p.id + '">' +
+          imgHtml +
+          '<div class="catalogo-card-info">' +
+            '<div class="catalogo-card-nome">' + escaparHTML(p.nome) + '</div>' +
+            '<div class="catalogo-card-preco">' + formatarDinheiro(p.precovenda) + '</div>' +
+            '<div class="catalogo-card-estoque">' + (semEstoque ? '❌ Sem estoque' : p.estoque + ' disponíveis') + '</div>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join('') +
+  '</div>';
+}
+
+function selecionarProdutoVenda(produtoId) {
+  vendaProdutoId = produtoId;
+  var produto = produtos.find(function (p) { return p.id === produtoId; });
+  if (!produto) return;
+
+  document.querySelectorAll('.venda-card').forEach(function (c) { c.classList.remove('venda-card-ativo'); });
+  var card = document.getElementById('venda-card-' + produtoId);
+  if (card) card.classList.add('venda-card-ativo');
+
+  var imgHtml = produto.imagem_url
+    ? '<img src="' + produto.imagem_url + '" class="pedido-produto-img" alt="">'
+    : '<div class="pedido-produto-placeholder">🍫</div>';
+
+  document.getElementById('venda-produto-selecionado').innerHTML =
+    imgHtml +
+    '<div>' +
+      '<div class="pedido-produto-nome">' + escaparHTML(produto.nome) + '</div>' +
+      '<div class="pedido-produto-preco">' + formatarDinheiro(produto.precovenda) + ' cada &bull; ' + produto.estoque + ' em estoque</div>' +
+    '</div>';
+  document.getElementById('venda-produto-selecionado').classList.remove('hidden');
+  document.getElementById('venda-form-detalhes').classList.remove('hidden');
+
+  document.getElementById('venda-qty').value = '1';
+  updateVendaPreview();
+  document.getElementById('venda-form-detalhes').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function changeQty(delta) {
@@ -476,10 +538,9 @@ function setPayment(status) {
 }
 
 function updateVendaPreview() {
-  var produtoId = document.getElementById('venda-produto').value;
   var qty = parseInt(document.getElementById('venda-qty').value) || 0;
-  if (!produtoId || qty <= 0) { document.getElementById('venda-preview').classList.add('hidden'); return; }
-  var produto = produtos.find(function (p) { return p.id === produtoId; });
+  if (!vendaProdutoId || qty <= 0) { document.getElementById('venda-preview').classList.add('hidden'); return; }
+  var produto = produtos.find(function (p) { return p.id === vendaProdutoId; });
   if (!produto) return;
   document.getElementById('preview-total').textContent = formatarDinheiro(parseFloat(produto.precovenda) * qty);
   document.getElementById('preview-lucro').textContent = formatarDinheiro((parseFloat(produto.precovenda) - parseFloat(produto.precocusto)) * qty);
@@ -487,7 +548,7 @@ function updateVendaPreview() {
 }
 
 async function registrarVenda() {
-  var produtoId = document.getElementById('venda-produto').value;
+  var produtoId = vendaProdutoId;
   var qty = parseInt(document.getElementById('venda-qty').value) || 0;
   var dataStr = document.getElementById('venda-data').value;
   var nomeCliente = document.getElementById('venda-cliente').value.trim();
@@ -529,10 +590,13 @@ async function registrarVenda() {
     if (stockError) throw stockError;
 
     showToast('✅ Venda registrada! Total: ' + formatarDinheiro(venda.total));
-    document.getElementById('venda-produto').value = '';
+    vendaProdutoId = null;
     document.getElementById('venda-qty').value = '1';
     document.getElementById('venda-cliente').value = '';
     document.getElementById('venda-preview').classList.add('hidden');
+    document.getElementById('venda-form-detalhes').classList.add('hidden');
+    document.getElementById('venda-produto-selecionado').classList.add('hidden');
+    document.querySelectorAll('.venda-card').forEach(function (c) { c.classList.remove('venda-card-ativo'); });
     setPayment('dinheiro');
     await carregarDados();
     navigate('dashboard');

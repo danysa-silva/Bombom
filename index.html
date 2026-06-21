@@ -104,13 +104,12 @@
 
     <!-- NOVA VENDA (admin) -->
     <section id="page-venda" class="page">
-      <div class="form-card">
-        <div class="form-group">
-          <label>Produto</label>
-          <select id="venda-produto" onchange="updateVendaPreview()">
-            <option value="">Selecione um produto...</option>
-          </select>
-        </div>
+      <div class="form-group">
+        <label>Selecione o Produto</label>
+        <div id="venda-produtos-grid" class="venda-grid"></div>
+      </div>
+      <div id="venda-form-detalhes" class="form-card hidden">
+        <div id="venda-produto-selecionado" class="venda-produto-sel hidden"></div>
         <div class="form-group">
           <label>Quantidade</label>
           <div class="qty-control">
@@ -274,6 +273,11 @@
         <button id="pedido-btn-credito" class="pay-btn" onclick="setPedidoPayment('credito')">💳 Crédito</button>
         <button id="pedido-btn-prazo" class="pay-btn" onclick="setPedidoPayment('prazo')">💰 Quando Receber</button>
       </div>
+    </div>
+    <div id="pedido-pix-info" class="pix-info hidden">
+      <div class="pix-info-titulo">📱 Chave PIX para pagar:</div>
+      <div class="pix-key" id="pedido-pix-chave" onclick="copiarPix()"></div>
+      <div class="pix-copy-hint">Toque para copiar</div>
     </div>
     <div class="venda-preview">
       <div class="preview-row">
