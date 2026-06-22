@@ -865,6 +865,41 @@ main {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.produto-item-oculto {
+  opacity: 0.6;
+}
+
+.produto-oculto-img {
+  filter: grayscale(80%);
+}
+
+.badge-oculto {
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 2px 7px;
+  border-radius: 20px;
+  vertical-align: middle;
+}
+
+.btn-ocultar {
+  padding: 8px 14px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-ocultar:active {
+  background: var(--bg);
 }
 
 /* ===== ESTOQUE ===== */

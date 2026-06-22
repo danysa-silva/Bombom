@@ -178,7 +178,7 @@ async function carregarVendas() {
 // ============================================================
 function renderizarCatalogo() {
   var container = document.getElementById('catalogo-produtos');
-  var disponiveis = produtos.filter(function (p) { return p.estoque > 0; });
+  var disponiveis = produtos.filter(function (p) { return p.estoque > 0 && !p.oculto; });
 
   if (disponiveis.length === 0) {
     container.innerHTML =
@@ -649,15 +649,17 @@ function renderizarProdutos() {
   container.innerHTML = produtos.map(function (p) {
     var lucroUnitario = parseFloat(p.precovenda) - parseFloat(p.precocusto);
     var badgeClass = p.estoque === 0 ? 'estoque-zero' : p.estoque <= (p.estoqueminimo || 5) ? 'estoque-baixo' : 'estoque-ok';
+    var oculto = !!p.oculto;
     var imagemHtml = p.imagem_url
-      ? '<img src="' + p.imagem_url + '" class="produto-imagem" alt="' + escaparHTML(p.nome) + '">'
-      : '<div class="produto-imagem-placeholder">🍫</div>';
+      ? '<img src="' + p.imagem_url + '" class="produto-imagem' + (oculto ? ' produto-oculto-img' : '') + '" alt="' + escaparHTML(p.nome) + '">'
+      : '<div class="produto-imagem-placeholder' + (oculto ? ' produto-oculto-img' : '') + '">🍫</div>';
+    var badgeOculto = oculto ? '<span class="badge-oculto">🚫 Oculto</span>' : '';
     return (
-      '<div class="produto-item" style="padding:0;overflow:hidden">' +
+      '<div class="produto-item' + (oculto ? ' produto-item-oculto' : '') + '" style="padding:0;overflow:hidden">' +
         imagemHtml +
         '<div style="padding:12px 14px">' +
           '<div class="produto-header">' +
-            '<div class="produto-nome">' + escaparHTML(p.nome) + '</div>' +
+            '<div class="produto-nome">' + escaparHTML(p.nome) + ' ' + badgeOculto + '</div>' +
             '<span class="estoque-badge ' + badgeClass + '">' + p.estoque + ' un.</span>' +
           '</div>' +
           '<div class="produto-precos">' +
@@ -667,12 +669,21 @@ function renderizarProdutos() {
           '</div>' +
           '<div class="produto-actions">' +
             '<button class="btn-secondary" onclick="openProdutoModal(\'' + p.id + '\')">Editar</button>' +
+            '<button class="btn-ocultar" onclick="toggleOcultarProduto(\'' + p.id + '\',' + oculto + ')">' + (oculto ? '👁 Mostrar' : '🚫 Ocultar') + '</button>' +
             '<button class="btn-danger" onclick="deletarProduto(\'' + p.id + '\', \'' + escaparHTML(p.nome) + '\')">Excluir</button>' +
           '</div>' +
         '</div>' +
       '</div>'
     );
   }).join('');
+}
+
+async function toggleOcultarProduto(id, ocultoAtual) {
+  var novoValor = !ocultoAtual;
+  var { error } = await window.db.from('produtos').update({ oculto: novoValor }).eq('id', id);
+  if (error) { showToast('Erro ao atualizar produto'); return; }
+  showToast(novoValor ? '🚫 Produto ocultado dos clientes' : '👁 Produto visível para os clientes');
+  await carregarProdutos();
 }
 
 function openProdutoModal(produtoId) {
