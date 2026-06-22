@@ -171,6 +171,40 @@
       <div id="catalogo-produtos"></div>
     </section>
 
+    <!-- CARRINHO (cliente) -->
+    <section id="page-carrinho" class="page">
+      <div id="carrinho-vazio" class="empty-state hidden">
+        <div class="empty-icon">🛒</div>
+        <p>Seu carrinho está vazio.<br>Adicione produtos na Loja!</p>
+      </div>
+      <div id="carrinho-conteudo" class="hidden">
+        <div id="lista-carrinho"></div>
+        <div class="form-card" style="margin-top:12px">
+          <div class="form-group">
+            <label>Forma de Pagamento</label>
+            <div class="payment-btns">
+              <button id="carr-btn-dinheiro" class="pay-btn pay-btn-active" onclick="setCarrinhoPayment('dinheiro')">💵 Dinheiro</button>
+              <button id="carr-btn-pix" class="pay-btn" onclick="setCarrinhoPayment('pix')">📱 PIX</button>
+              <button id="carr-btn-credito" class="pay-btn" onclick="setCarrinhoPayment('credito')">💳 Crédito</button>
+              <button id="carr-btn-prazo" class="pay-btn" onclick="setCarrinhoPayment('prazo')">💰 Quando Receber</button>
+            </div>
+          </div>
+          <div id="carrinho-pix-info" class="pix-info hidden">
+            <div class="pix-info-titulo">📱 Chave PIX para pagar:</div>
+            <div class="pix-key" id="carrinho-pix-chave" onclick="copiarPix()"></div>
+            <div class="pix-copy-hint">Toque para copiar</div>
+          </div>
+          <div class="venda-preview">
+            <div class="preview-row">
+              <span>Total:</span>
+              <span id="carrinho-total" class="preview-value">R$ 0,00</span>
+            </div>
+          </div>
+          <button id="btn-confirmar-carrinho" class="btn-primary" onclick="confirmarCarrinho()">✅ Confirmar Pedido</button>
+        </div>
+      </div>
+    </section>
+
     <!-- MEUS PEDIDOS (cliente) -->
     <section id="page-meus-pedidos" class="page">
       <div id="lista-meus-pedidos"></div>
@@ -207,6 +241,10 @@
     <button class="nav-btn active" onclick="navegarCliente('loja')" id="nav-cli-loja">
       <span class="nav-icon">🛍️</span>
       <span class="nav-label">Loja</span>
+    </button>
+    <button class="nav-btn" onclick="navegarCliente('carrinho')" id="nav-cli-carrinho">
+      <span class="nav-icon-wrap">🛒<span id="carrinho-badge" class="cart-badge hidden">0</span></span>
+      <span class="nav-label">Carrinho</span>
     </button>
     <button class="nav-btn" onclick="navegarCliente('meus-pedidos')" id="nav-cli-meus-pedidos">
       <span class="nav-icon">📋</span>
@@ -259,10 +297,10 @@
     <button class="btn-primary" onclick="salvarProduto()">Salvar Produto</button>
   </div>
 
-  <!-- Modal: Pedido Cliente -->
+  <!-- Modal: Adicionar ao Carrinho (cliente) -->
   <div id="modal-pedido" class="modal hidden">
     <div class="modal-header">
-      <h2 id="modal-pedido-titulo">Fazer Pedido</h2>
+      <h2 id="modal-pedido-titulo">Adicionar ao Carrinho</h2>
       <button onclick="closeModal('modal-pedido')" class="modal-close">✕</button>
     </div>
     <div id="modal-pedido-produto-info" class="pedido-produto-info"></div>
@@ -274,27 +312,13 @@
         <button onclick="changePedidoQty(1)" class="qty-btn">+</button>
       </div>
     </div>
-    <div class="form-group">
-      <label>Forma de Pagamento</label>
-      <div class="payment-btns">
-        <button id="pedido-btn-dinheiro" class="pay-btn pay-btn-active" onclick="setPedidoPayment('dinheiro')">💵 Dinheiro</button>
-        <button id="pedido-btn-pix" class="pay-btn" onclick="setPedidoPayment('pix')">📱 PIX</button>
-        <button id="pedido-btn-credito" class="pay-btn" onclick="setPedidoPayment('credito')">💳 Crédito</button>
-        <button id="pedido-btn-prazo" class="pay-btn" onclick="setPedidoPayment('prazo')">💰 Quando Receber</button>
-      </div>
-    </div>
-    <div id="pedido-pix-info" class="pix-info hidden">
-      <div class="pix-info-titulo">📱 Chave PIX para pagar:</div>
-      <div class="pix-key" id="pedido-pix-chave" onclick="copiarPix()"></div>
-      <div class="pix-copy-hint">Toque para copiar</div>
-    </div>
     <div class="venda-preview">
       <div class="preview-row">
-        <span>Total:</span>
+        <span>Subtotal:</span>
         <span id="pedido-preview-total" class="preview-value">R$ 0,00</span>
       </div>
     </div>
-    <button id="btn-confirmar-pedido" class="btn-primary" onclick="confirmarPedido()">Confirmar Pedido</button>
+    <button id="btn-confirmar-pedido" class="btn-primary" onclick="adicionarAoCarrinho()">🛒 Adicionar ao Carrinho</button>
   </div>
 
   <div id="overlay" class="overlay hidden" onclick="closeAllModals()"></div>
