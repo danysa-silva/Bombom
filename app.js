@@ -255,7 +255,6 @@ function abrirModalPedido(produtoId) {
 
   document.getElementById('modal-pedido-titulo').textContent = produtoPedidoAtual.nome;
   document.getElementById('pedido-qty').value = '1';
-  setPedidoPayment('dinheiro');
   updatePedidoPreview();
 
   var imgHtml = produtoPedidoAtual.imagem_url
