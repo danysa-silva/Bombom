@@ -694,7 +694,6 @@ function updateVendaPreview() {
   var produto = produtos.find(function (p) { return p.id === vendaProdutoId; });
   if (!produto) return;
   document.getElementById('preview-total').textContent = formatarDinheiro(parseFloat(produto.precovenda) * qty);
-  document.getElementById('preview-lucro').textContent = privacidade ? '• • • •' : formatarDinheiro((parseFloat(produto.precovenda) - parseFloat(produto.precocusto)) * qty);
   document.getElementById('venda-preview').classList.remove('hidden');
 }
 
