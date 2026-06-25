@@ -13,6 +13,7 @@ let produtoPedidoAtual = null;
 let receberGrupos = [];
 let carrinho = [];
 let carrinhoPayment = 'dinheiro';
+let privacidade = JSON.parse(localStorage.getItem('privacidade') || 'false');
 
 // ============================================================
 // INICIALIZAÇÃO
@@ -109,9 +110,19 @@ async function iniciarModoAdmin() {
   modoAtual = 'admin';
   document.getElementById('nav-admin').classList.remove('hidden');
   document.getElementById('btn-sair').classList.remove('hidden');
-  document.getElementById('page-title').textContent = 'Dashboard';
-  document.getElementById('page-icon').textContent = '📊';
+  var btnPriv = document.getElementById('btn-privacidade');
+  btnPriv.classList.remove('hidden');
+  btnPriv.textContent = privacidade ? '🙈' : '👁';
   await carregarDados();
+  navigate('venda');
+}
+
+function togglePrivacidade() {
+  privacidade = !privacidade;
+  localStorage.setItem('privacidade', JSON.stringify(privacidade));
+  document.getElementById('btn-privacidade').textContent = privacidade ? '🙈' : '👁';
+  renderizarDashboard();
+  updateVendaPreview();
 }
 
 // ============================================================
@@ -538,10 +549,11 @@ function renderizarDashboard() {
     else aReceber += parseFloat(v.total) || 0;
   });
 
-  document.getElementById('dash-total-vendido').textContent = formatarDinheiro(totalVendido);
-  document.getElementById('dash-recebido').textContent = formatarDinheiro(recebido);
-  document.getElementById('dash-a-receber').textContent = formatarDinheiro(aReceber);
-  document.getElementById('dash-lucro').textContent = formatarDinheiro(lucro);
+  var mascarar = function(v) { return privacidade ? '• • • •' : formatarDinheiro(v); };
+  document.getElementById('dash-total-vendido').textContent = mascarar(totalVendido);
+  document.getElementById('dash-recebido').textContent = mascarar(recebido);
+  document.getElementById('dash-a-receber').textContent = mascarar(aReceber);
+  document.getElementById('dash-lucro').textContent = mascarar(lucro);
   document.getElementById('dash-qtd-vendas').textContent = filtradas.length + (filtradas.length === 1 ? ' venda' : ' vendas');
 
   var container = document.getElementById('dash-ultimas-vendas');
@@ -682,7 +694,7 @@ function updateVendaPreview() {
   var produto = produtos.find(function (p) { return p.id === vendaProdutoId; });
   if (!produto) return;
   document.getElementById('preview-total').textContent = formatarDinheiro(parseFloat(produto.precovenda) * qty);
-  document.getElementById('preview-lucro').textContent = formatarDinheiro((parseFloat(produto.precovenda) - parseFloat(produto.precocusto)) * qty);
+  document.getElementById('preview-lucro').textContent = privacidade ? '• • • •' : formatarDinheiro((parseFloat(produto.precovenda) - parseFloat(produto.precocusto)) * qty);
   document.getElementById('venda-preview').classList.remove('hidden');
 }
 

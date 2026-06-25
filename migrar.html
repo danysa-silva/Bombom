@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Migração de Dados</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
+    button { background: #3ecf8e; color: white; border: none; padding: 14px 28px; font-size: 16px; border-radius: 8px; cursor: pointer; }
+    button:disabled { background: #ccc; cursor: default; }
+    #log { margin-top: 20px; background: #f4f4f4; padding: 16px; border-radius: 8px; white-space: pre-wrap; font-size: 14px; line-height: 1.6; }
+    .ok { color: #1a7a4a; }
+    .erro { color: #c0392b; }
+  </style>
+</head>
+<body>
+  <h2>Migração Supabase → Novo Projeto</h2>
+  <p>Clique no botão para copiar todos os produtos e vendas para o novo banco.</p>
+  <button id="btn" onclick="migrar()">Iniciar Migração</button>
+  <div id="log"></div>
+
+  <script>
+    const ANTIGO_URL = 'https://fmudggjeekfozwokgctg.supabase.co';
+    const ANTIGO_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZtdWRnZ2plZWtmb3p3b2tnY3RnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwMzk4NzAsImV4cCI6MjA5NzYxNTg3MH0.-p76AYwUKwxNUYJL-CX5Vru1774pr7fI4XPHY_vLnDs';
+
+    const NOVO_URL = 'https://zwqroxtthlamiafcavxc.supabase.co';
+    const NOVO_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp3cXJveHR0aGxhbWlhZmNhdnhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMjUwNzgsImV4cCI6MjA5NzgwMTA3OH0.HYtbcquWtkMoAZwb8QYSlsOr2blD08o1Mnh3Fyz0mI8';
+
+    const antigo = supabase.createClient(ANTIGO_URL, ANTIGO_KEY);
+    const novo = supabase.createClient(NOVO_URL, NOVO_KEY);
+
+    function log(msg, tipo) {
+      const div = document.getElementById('log');
+      div.innerHTML += `<span class="${tipo || ''}">${msg}\n</span>`;
+    }
+
+    async function migrar() {
+      document.getElementById('btn').disabled = true;
+      document.getElementById('log').innerHTML = '';
+
+      log('Iniciando migração...');
+
+      // Migrar produtos
+      log('\n📦 Buscando produtos no banco antigo...');
+      const { data: produtos, error: errProd } = await antigo.from('produtos').select('*');
+      if (errProd) { log('Erro ao buscar produtos: ' + errProd.message, 'erro'); return; }
+      log(`Encontrados ${produtos.length} produtos.`, 'ok');
+
+      if (produtos.length > 0) {
+        const { error: errInsertProd } = await novo.from('produtos').insert(produtos);
+        if (errInsertProd) { log('Erro ao inserir produtos: ' + errInsertProd.message, 'erro'); return; }
+        log(`✅ ${produtos.length} produtos copiados com sucesso!`, 'ok');
+      }
+
+      // Migrar vendas
+      log('\n🛒 Buscando vendas no banco antigo...');
+      const { data: vendas, error: errVend } = await antigo.from('vendas').select('*');
+      if (errVend) { log('Erro ao buscar vendas: ' + errVend.message, 'erro'); return; }
+      log(`Encontradas ${vendas.length} vendas.`, 'ok');
+
+      if (vendas.length > 0) {
+        const { error: errInsertVend } = await novo.from('vendas').insert(vendas);
+        if (errInsertVend) { log('Erro ao inserir vendas: ' + errInsertVend.message, 'erro'); return; }
+        log(`✅ ${vendas.length} vendas copiadas com sucesso!`, 'ok');
+      }
+
+      log('\n🎉 Migração concluída! Você pode fechar essa página.', 'ok');
+      document.getElementById('btn').disabled = false;
+    }
+  </script>
+</body>
+</html>
