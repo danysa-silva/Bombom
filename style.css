@@ -1358,3 +1358,39 @@ main {
   from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
+
+.pedidos-resumo {
+  background: white;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pedidos-resumo-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pedidos-resumo-label {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.pedidos-resumo-valor {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.pedidos-resumo-pendente .pedidos-resumo-label {
+  color: #d97706;
+}
+
+.pedidos-resumo-pendente .pedidos-resumo-valor {
+  color: #d97706;
+}

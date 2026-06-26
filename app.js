@@ -233,7 +233,24 @@ function renderizarMeusPedidos() {
     return;
   }
 
-  container.innerHTML = '<div class="section-title">Seus Pedidos</div>' +
+  var totalGeral = meusPedidos.reduce(function (s, v) { return s + (parseFloat(v.total) || 0); }, 0);
+  var totalPendente = meusPedidos.filter(function (v) { return !v.recebido; }).reduce(function (s, v) { return s + (parseFloat(v.total) || 0); }, 0);
+
+  var resumoHtml =
+    '<div class="pedidos-resumo">' +
+      '<div class="pedidos-resumo-item">' +
+        '<span class="pedidos-resumo-label">Total de pedidos</span>' +
+        '<span class="pedidos-resumo-valor">' + formatarDinheiro(totalGeral) + '</span>' +
+      '</div>' +
+      (totalPendente > 0
+        ? '<div class="pedidos-resumo-item pedidos-resumo-pendente">' +
+            '<span class="pedidos-resumo-label">💰 A pagar</span>' +
+            '<span class="pedidos-resumo-valor">' + formatarDinheiro(totalPendente) + '</span>' +
+          '</div>'
+        : '') +
+    '</div>';
+
+  container.innerHTML = resumoHtml + '<div class="section-title">Seus Pedidos</div>' +
     meusPedidos.map(function (v) {
       var partes = v.data.split('-');
       var dataStr = partes[2] + '/' + partes[1];
