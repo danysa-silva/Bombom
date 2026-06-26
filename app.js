@@ -184,7 +184,17 @@ async function carregarVendas() {
   var { data, error } = await window.db.from('vendas').select('*').order('data', { ascending: false }).limit(200);
   if (error) { console.error(error); return; }
   vendas = data || [];
-  if (modoAtual === 'admin') renderizarDashboard();
+  if (modoAtual === 'admin') {
+    renderizarDashboard();
+    atualizarListaClientes();
+  }
+}
+
+function atualizarListaClientes() {
+  var datalist = document.getElementById('clientes-lista');
+  if (!datalist) return;
+  var nomes = [...new Set(vendas.map(function(v) { return v.nomecomprador; }).filter(Boolean))].sort();
+  datalist.innerHTML = nomes.map(function(n) { return '<option value="' + escaparHTML(n) + '">'; }).join('');
 }
 
 // ============================================================
