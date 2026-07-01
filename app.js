@@ -256,6 +256,12 @@ function renderizarMeusPedidos() {
         ? '<div class="pedidos-resumo-item pedidos-resumo-pendente">' +
             '<span class="pedidos-resumo-label">💰 A pagar</span>' +
             '<span class="pedidos-resumo-valor">' + formatarDinheiro(totalPendente) + '</span>' +
+          '</div>' +
+          '<button class="btn-primary" onclick="togglePagarPendente()">📱 Pagar agora</button>' +
+          '<div class="pix-info hidden" id="meus-pedidos-pix-info">' +
+            '<div class="pix-info-titulo">Chave PIX para pagar:</div>' +
+            '<div class="pix-key" onclick="copiarPix()">' + (window.PIX_KEY || '') + '</div>' +
+            '<div class="pix-copy-hint">Toque para copiar</div>' +
           '</div>'
         : '') +
     '</div>';
@@ -284,6 +290,10 @@ function renderizarMeusPedidos() {
         '</div>'
       );
     }).join('');
+}
+
+function togglePagarPendente() {
+  document.getElementById('meus-pedidos-pix-info').classList.toggle('hidden');
 }
 
 // Modal pedido (cliente)
