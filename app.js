@@ -276,7 +276,9 @@ function renderizarMeusPedidos() {
         credito:  { classe: 'badge-pago', texto: '💳 Crédito' },
         prazo:    { classe: 'badge-prazo', texto: '💰 Quando Receber' }
       };
-      var badge = badgeInfo[v.status] || badgeInfo['prazo'];
+      var badge = v.recebido
+        ? { classe: 'badge-pago', texto: '✅ Pago' }
+        : (badgeInfo[v.status] || badgeInfo['prazo']);
       return (
         '<div class="venda-item">' +
           '<div class="venda-item-left">' +
@@ -611,7 +613,9 @@ function renderizarDashboard() {
   container.innerHTML = recentes.map(function (v) {
     var partes = v.data.split('-');
     var dataStr = partes[2] + '/' + partes[1];
-    var badge = badgeInfo[v.status] || badgeInfo['prazo'];
+    var badge = v.recebido
+      ? { classe: 'badge-pago', texto: '✅ Pago' }
+      : (badgeInfo[v.status] || badgeInfo['prazo']);
     return (
       '<div class="venda-item">' +
         '<div class="venda-item-left">' +
