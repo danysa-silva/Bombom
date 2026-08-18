@@ -81,13 +81,24 @@ function verificarPin() {
 }
 
 function salvarNomeUsuario() {
-  var nome = document.getElementById('input-nome-usuario').value.trim();
+  var nome = document.getElementById('input-nome-usuario').value.trim().replace(/\s+/g, ' ');
   if (!nome) { showToast('Digite seu nome para continuar'); return; }
   nomeUsuario = nome;
   localStorage.setItem('nomeUsuario', nome);
   localStorage.setItem('appModo', 'cliente');
   document.getElementById('tela-nome-cliente').classList.add('hidden');
   iniciarModoCliente();
+}
+
+// Reaproveita a grafia já usada em vendas anteriores para o mesmo nome
+// (ignorando maiúsculas/espaços), evitando duplicar o cliente com nomes diferentes
+function resolverNomeCliente(nomeDigitado) {
+  var nome = (nomeDigitado || '').trim().replace(/\s+/g, ' ');
+  if (!nome) return nome;
+  var existente = vendas.find(function (v) {
+    return (v.nomecomprador || '').trim().toLowerCase() === nome.toLowerCase();
+  });
+  return existente ? existente.nomecomprador : nome;
 }
 
 function voltarInicio() {
@@ -132,7 +143,6 @@ async function iniciarModoCliente() {
   modoAtual = 'cliente';
   document.getElementById('nav-cliente').classList.remove('hidden');
   document.getElementById('btn-sair').classList.remove('hidden');
-  document.getElementById('page-title').textContent = 'Olá, ' + nomeUsuario + '!';
   document.getElementById('page-icon').textContent = '🛍️';
 
   // Mostra página da loja e esconde admin pages
@@ -140,6 +150,14 @@ async function iniciarModoCliente() {
   document.getElementById('page-loja').classList.add('active');
 
   await carregarDados();
+
+  // Se já existe uma venda com esse nome grafado de outro jeito, usa a mesma grafia
+  var nomeResolvido = resolverNomeCliente(nomeUsuario);
+  if (nomeResolvido !== nomeUsuario) {
+    nomeUsuario = nomeResolvido;
+    localStorage.setItem('nomeUsuario', nomeUsuario);
+  }
+  document.getElementById('page-title').textContent = 'Olá, ' + nomeUsuario + '!';
 }
 
 function navegarCliente(pagina) {
@@ -193,7 +211,14 @@ async function carregarVendas() {
 function atualizarListaClientes() {
   var datalist = document.getElementById('clientes-lista');
   if (!datalist) return;
-  var nomes = [...new Set(vendas.map(function(v) { return v.nomecomprador; }).filter(Boolean))].sort();
+  var vistos = {};
+  var nomes = [];
+  vendas.forEach(function (v) {
+    var nome = (v.nomecomprador || '').trim();
+    var chave = nome.toLowerCase();
+    if (nome && !vistos[chave]) { vistos[chave] = true; nomes.push(nome); }
+  });
+  nomes.sort();
   datalist.innerHTML = nomes.map(function(n) { return '<option value="' + escaparHTML(n) + '">'; }).join('');
 }
 
@@ -742,7 +767,7 @@ async function registrarVenda() {
   var produtoId = vendaProdutoId;
   var qty = parseInt(document.getElementById('venda-qty').value) || 0;
   var dataStr = document.getElementById('venda-data').value;
-  var nomeCliente = document.getElementById('venda-cliente').value.trim();
+  var nomeCliente = resolverNomeCliente(document.getElementById('venda-cliente').value);
 
   if (!produtoId) { showToast('Selecione um produto'); return; }
   if (qty <= 0)   { showToast('Informe uma quantidade válida'); return; }
@@ -980,14 +1005,15 @@ function renderizarReceber() {
     return;
   }
 
-  // Agrupa por cliente
+  // Agrupa por cliente (ignora maiúsculas/espaços para não separar o mesmo cliente em grupos diferentes)
   var gruposMap = {};
   naoRecebidas.forEach(function (v) {
-    var nome = v.nomecomprador || 'Sem nome';
-    if (!gruposMap[nome]) gruposMap[nome] = { nome: nome, total: 0, vendas: [], ids: [] };
-    gruposMap[nome].total += parseFloat(v.total) || 0;
-    gruposMap[nome].vendas.push(v);
-    gruposMap[nome].ids.push(v.id);
+    var nome = (v.nomecomprador || 'Sem nome').trim();
+    var chave = nome.toLowerCase();
+    if (!gruposMap[chave]) gruposMap[chave] = { nome: nome, total: 0, vendas: [], ids: [] };
+    gruposMap[chave].total += parseFloat(v.total) || 0;
+    gruposMap[chave].vendas.push(v);
+    gruposMap[chave].ids.push(v.id);
   });
 
   receberGrupos = Object.values(gruposMap).sort(function (a, b) { return b.total - a.total; });
