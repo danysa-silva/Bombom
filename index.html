@@ -103,6 +103,8 @@
       </div>
       <div class="section-title">Últimas Vendas</div>
       <div id="dash-ultimas-vendas"></div>
+      <div class="section-title" id="dash-recebidos-titulo">Recebidos no Período</div>
+      <div id="dash-recebidos-periodo"></div>
     </section>
 
     <!-- NOVA VENDA (admin) -->
@@ -215,10 +217,6 @@
 
   <!-- Nav Admin -->
   <nav id="nav-admin" class="bottom-nav hidden">
-    <button class="nav-btn active" onclick="navigate('dashboard')" id="nav-dashboard">
-      <span class="nav-icon">📊</span>
-      <span class="nav-label">Dashboard</span>
-    </button>
     <button class="nav-btn" onclick="navigate('venda')" id="nav-venda">
       <span class="nav-icon">🛒</span>
       <span class="nav-label">Vender</span>
@@ -234,6 +232,10 @@
     <button class="nav-btn" onclick="navigate('estoque')" id="nav-estoque">
       <span class="nav-icon">📦</span>
       <span class="nav-label">Estoque</span>
+    </button>
+    <button class="nav-btn active" onclick="navigate('dashboard')" id="nav-dashboard">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Dashboard</span>
     </button>
   </nav>
 

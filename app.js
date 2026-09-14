@@ -586,32 +586,44 @@ function setFilter(filtro) {
   renderizarDashboard();
 }
 
-function getVendasFiltradas() {
+function dataCaiNoFiltro(dataStr, filtro) {
   var agora = new Date();
   var hojeStr = agora.toISOString().split('T')[0];
+  if (filtro === 'hoje') return dataStr === hojeStr;
+  if (filtro === 'semana') {
+    var semanaAtras = new Date(agora);
+    semanaAtras.setDate(semanaAtras.getDate() - 6);
+    return dataStr >= semanaAtras.toISOString().split('T')[0];
+  }
+  return dataStr.startsWith(hojeStr.substring(0, 7));
+}
 
+function getVendasFiltradas() {
+  return vendas.filter(function (v) { return dataCaiNoFiltro(v.data, currentFilter); });
+}
+
+// Vendas recebidas dentro do período, pela data em que o pagamento foi confirmado
+// (não pela data da venda) — assim uma venda "a prazo" antiga que foi paga hoje
+// aparece em "Hoje", mesmo tendo sido vendida em outro dia.
+function getVendasRecebidasNoPeriodo() {
   return vendas.filter(function (v) {
-    var dataVenda = v.data;
-    if (currentFilter === 'hoje') return dataVenda === hojeStr;
-    if (currentFilter === 'semana') {
-      var semanaAtras = new Date(agora);
-      semanaAtras.setDate(semanaAtras.getDate() - 6);
-      return dataVenda >= semanaAtras.toISOString().split('T')[0];
-    }
-    return dataVenda.startsWith(hojeStr.substring(0, 7));
+    if (!v.recebido) return false;
+    return dataCaiNoFiltro(v.data_recebimento || v.data, currentFilter);
   });
 }
 
 function renderizarDashboard() {
   var filtradas = getVendasFiltradas();
-  var totalVendido = 0, recebido = 0, aReceber = 0, lucro = 0;
+  var totalVendido = 0, aReceber = 0, lucro = 0;
 
   filtradas.forEach(function (v) {
     totalVendido += parseFloat(v.total) || 0;
     lucro += parseFloat(v.lucro) || 0;
-    if (v.recebido) recebido += parseFloat(v.total) || 0;
-    else aReceber += parseFloat(v.total) || 0;
+    if (!v.recebido) aReceber += parseFloat(v.total) || 0;
   });
+
+  var recebidasPeriodo = getVendasRecebidasNoPeriodo();
+  var recebido = recebidasPeriodo.reduce(function (s, v) { return s + (parseFloat(v.total) || 0); }, 0);
 
   var mascarar = function(v) { return privacidade ? '• • • •' : formatarDinheiro(v); };
   document.getElementById('dash-total-vendido').textContent = mascarar(totalVendido);
@@ -620,8 +632,35 @@ function renderizarDashboard() {
   document.getElementById('dash-lucro').textContent = mascarar(lucro);
   document.getElementById('dash-qtd-vendas').textContent = filtradas.length + (filtradas.length === 1 ? ' venda' : ' vendas');
 
+  var tituloPeriodo = { hoje: 'Recebidos Hoje', semana: 'Recebidos na Semana', mes: 'Recebidos no Mês' };
+  document.getElementById('dash-recebidos-titulo').textContent = tituloPeriodo[currentFilter] || 'Recebidos no Período';
+
+  var containerRecebidos = document.getElementById('dash-recebidos-periodo');
+  if (recebidasPeriodo.length === 0) {
+    containerRecebidos.innerHTML = '<div class="empty-state"><div class="empty-icon">💰</div><p>Ninguém pagou neste período ainda</p></div>';
+  } else {
+    containerRecebidos.innerHTML = recebidasPeriodo.map(function (v) {
+      var partes = v.data.split('-');
+      var dataVendaStr = partes[2] + '/' + partes[1];
+      return (
+        '<div class="venda-item">' +
+          '<div class="venda-item-left">' +
+            '<div class="venda-nome">' + escaparHTML(v.produtonome) + '</div>' +
+            '<div class="venda-info">' + v.quantidade + 'x &bull; vendido ' + dataVendaStr +
+              (v.nomecomprador ? ' &bull; ' + escaparHTML(v.nomecomprador) : '') + '</div>' +
+          '</div>' +
+          '<div class="venda-item-right">' +
+            '<div class="venda-valor">' + formatarDinheiro(v.total) + '</div>' +
+            '<span class="badge badge-pago">✅ Pago</span>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join('');
+  }
+
   var container = document.getElementById('dash-ultimas-vendas');
-  var recentes = filtradas.slice(0, 15);
+  var limite = currentFilter === 'hoje' ? 15 : filtradas.length;
+  var recentes = filtradas.slice(0, limite);
 
   if (recentes.length === 0) {
     container.innerHTML = '<div class="empty-state"><div class="empty-icon">🛒</div><p>Nenhuma venda no período</p></div>';
@@ -1075,9 +1114,20 @@ function renderizarReceber() {
   }).join('');
 }
 
+// Marca como recebido e registra a data do recebimento. Se a coluna
+// data_recebimento ainda não existir no banco, cai de volta pro update simples.
+async function confirmarRecebimento(aplicarFiltro) {
+  var hoje = new Date().toISOString().split('T')[0];
+  var resp = await aplicarFiltro(window.db.from('vendas').update({ recebido: true, data_recebimento: hoje }));
+  if (resp.error) {
+    resp = await aplicarFiltro(window.db.from('vendas').update({ recebido: true }));
+  }
+  return resp;
+}
+
 async function marcarVendaPaga(vendaId) {
   try {
-    var { error } = await window.db.from('vendas').update({ recebido: true }).eq('id', vendaId);
+    var { error } = await confirmarRecebimento(function (q) { return q.eq('id', vendaId); });
     if (error) throw error;
     showToast('✅ Pagamento confirmado!');
     await carregarVendas();
@@ -1095,9 +1145,7 @@ async function marcarClientePago(idx) {
   if (!confirm('Confirmar que ' + grupo.nome + ' pagou ' + formatarDinheiro(grupo.total) + '?')) return;
 
   try {
-    var { error } = await window.db.from('vendas')
-      .update({ recebido: true })
-      .in('id', grupo.ids);
+    var { error } = await confirmarRecebimento(function (q) { return q.in('id', grupo.ids); });
     if (error) throw error;
     showToast('✅ Tudo pago por ' + grupo.nome + '!');
     await carregarVendas();
