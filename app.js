@@ -1016,7 +1016,17 @@ function renderizarReceber() {
     gruposMap[chave].ids.push(v.id);
   });
 
-  receberGrupos = Object.values(gruposMap).sort(function (a, b) { return b.total - a.total; });
+  var termoBusca = (document.getElementById('receber-busca').value || '').trim().toLowerCase();
+  var todosGrupos = Object.values(gruposMap).sort(function (a, b) { return b.total - a.total; });
+  receberGrupos = termoBusca
+    ? todosGrupos.filter(function (g) { return g.nome.toLowerCase().indexOf(termoBusca) !== -1; })
+    : todosGrupos;
+
+  if (receberGrupos.length === 0) {
+    container.innerHTML =
+      '<div class="empty-state"><div class="empty-icon">🔎</div><p>Nenhum cliente encontrado</p></div>';
+    return;
+  }
 
   var pagConfig = {
     dinheiro: { texto: '💵 Dinheiro',     classe: 'badge-metodo-din' },

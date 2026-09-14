@@ -630,6 +630,27 @@ main {
   padding-right: 36px;
 }
 
+.receber-busca {
+  display: block;
+  width: 100%;
+  padding: 13px 12px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  font-size: 1rem;
+  background: var(--bg);
+  color: var(--text);
+  margin-bottom: 14px;
+  transition: border-color 0.15s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.receber-busca:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: white;
+}
+
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
