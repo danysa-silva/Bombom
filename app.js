@@ -73,6 +73,7 @@ function verificarPin() {
   if (pin === window.ADMIN_PIN) {
     document.getElementById('tela-pin').classList.add('hidden');
     localStorage.setItem('appModo', 'admin');
+    window.amplitude.track('Logged In', { prompt_version: 'BA400.4' }); // helps improve this setup flow — safe to remove once you've verified the event lands
     iniciarModoAdmin();
   } else {
     showToast('PIN incorreto. Tente novamente.');
