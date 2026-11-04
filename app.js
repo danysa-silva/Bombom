@@ -199,9 +199,18 @@ async function carregarProdutos() {
 }
 
 async function carregarVendas() {
-  var { data, error } = await window.db.from('vendas').select('*').order('data', { ascending: false }).limit(200);
-  if (error) { console.error(error); return; }
-  vendas = data || [];
+  // Busca todas as vendas, de 1000 em 1000 (limite por requisição do Supabase)
+  var todas = [];
+  var passo = 1000;
+  for (var inicio = 0; ; inicio += passo) {
+    var { data, error } = await window.db.from('vendas').select('*')
+      .order('data', { ascending: false }).order('id')
+      .range(inicio, inicio + passo - 1);
+    if (error) { console.error(error); showToast('Erro ao carregar vendas'); return; }
+    todas = todas.concat(data || []);
+    if (!data || data.length < passo) break;
+  }
+  vendas = todas;
   if (modoAtual === 'admin') {
     renderizarDashboard();
     atualizarListaClientes();
@@ -578,6 +587,15 @@ function navigate(pagina) {
 // ============================================================
 // DASHBOARD
 // ============================================================
+// Mostra o nome do mês passado no botão (ex.: "Out")
+function atualizarRotuloMesAnterior() {
+  var btn = document.querySelector('.filter-btn[data-filter="mes-anterior"]');
+  if (!btn) return;
+  var nomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  var agora = new Date();
+  btn.textContent = nomes[new Date(agora.getFullYear(), agora.getMonth() - 1, 1).getMonth()];
+}
+
 function setFilter(filtro) {
   currentFilter = filtro;
   document.querySelectorAll('.filter-btn').forEach(function (btn) {
@@ -586,15 +604,30 @@ function setFilter(filtro) {
   renderizarDashboard();
 }
 
-function dataCaiNoFiltro(dataStr, filtro) {
+// Data no fuso do aparelho (toISOString usa UTC e virava o dia às 20h em Manaus)
+function dataLocalStr(d) {
+  var m = String(d.getMonth() + 1).padStart(2, '0');
+  var dia = String(d.getDate()).padStart(2, '0');
+  return d.getFullYear() + '-' + m + '-' + dia;
+}
+
+function mesAnteriorStr() {
   var agora = new Date();
-  var hojeStr = agora.toISOString().split('T')[0];
+  return dataLocalStr(new Date(agora.getFullYear(), agora.getMonth() - 1, 1)).substring(0, 7);
+}
+
+function dataCaiNoFiltro(dataStr, filtro) {
+  if (filtro === 'tudo') return true;
+  if (!dataStr) return false;
+  var agora = new Date();
+  var hojeStr = dataLocalStr(agora);
   if (filtro === 'hoje') return dataStr === hojeStr;
   if (filtro === 'semana') {
     var semanaAtras = new Date(agora);
     semanaAtras.setDate(semanaAtras.getDate() - 6);
-    return dataStr >= semanaAtras.toISOString().split('T')[0];
+    return dataStr >= dataLocalStr(semanaAtras);
   }
+  if (filtro === 'mes-anterior') return dataStr.startsWith(mesAnteriorStr());
   return dataStr.startsWith(hojeStr.substring(0, 7));
 }
 
@@ -613,6 +646,7 @@ function getVendasRecebidasNoPeriodo() {
 }
 
 function renderizarDashboard() {
+  atualizarRotuloMesAnterior();
   var filtradas = getVendasFiltradas();
   var totalVendido = 0, aReceber = 0, lucro = 0;
 
@@ -632,7 +666,7 @@ function renderizarDashboard() {
   document.getElementById('dash-lucro').textContent = mascarar(lucro);
   document.getElementById('dash-qtd-vendas').textContent = filtradas.length + (filtradas.length === 1 ? ' venda' : ' vendas');
 
-  var tituloPeriodo = { hoje: 'Recebidos Hoje', semana: 'Recebidos na Semana', mes: 'Recebidos no Mês' };
+  var tituloPeriodo = { hoje: 'Recebidos Hoje', semana: 'Recebidos na Semana', mes: 'Recebidos no Mês', 'mes-anterior': 'Recebidos no Mês Passado', tudo: 'Todos os Recebidos' };
   document.getElementById('dash-recebidos-titulo').textContent = tituloPeriodo[currentFilter] || 'Recebidos no Período';
 
   var containerRecebidos = document.getElementById('dash-recebidos-periodo');

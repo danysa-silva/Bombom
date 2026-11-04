@@ -331,7 +331,8 @@ main {
 
 .filter-btn {
   flex: 1;
-  padding: 9px;
+  padding: 9px 4px;
+  white-space: nowrap;
   border: none;
   border-radius: 9px;
   background: transparent;
