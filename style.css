@@ -319,6 +319,182 @@ main {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* ===== PAINEL: NAVEGAÇÃO DE MÊS ===== */
+.mes-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 10px 0 2px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.mes-nav-btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--card-bg);
+  color: var(--primary);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* ===== PAINEL: BLOCOS (gráfico, devedores, produtos) ===== */
+.dash-bloco {
+  background: var(--card-bg);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-top: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.dash-bloco-titulo {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.grafico-legenda {
+  display: flex;
+  gap: 14px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.grafico-legenda span { display: flex; align-items: center; gap: 4px; }
+.grafico-legenda i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+.grafico-area { position: relative; height: 190px; }
+
+.devedor-linha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.devedor-linha:first-of-type { border-top: none; }
+.devedor-nome { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.devedor-valor { font-weight: 700; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+
+.devedor-ver-todos {
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 0;
+  border: none;
+  background: transparent;
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 0.88rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dash-vazio { font-size: 0.88rem; color: var(--text-muted); padding: 6px 0; }
+
+.btn-editar-nome {
+  border: none;
+  background: transparent;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 2px 4px;
+  opacity: 0.7;
+}
+
+.btn-link {
+  border: none;
+  background: transparent;
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.texto-suave { color: var(--text-muted); font-weight: 400; }
+
+.pill-margem {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.pill-bom     { background: #dcfce7; color: #166534; }
+.pill-atencao { background: #fef3c7; color: #92400e; }
+.pill-ruim    { background: #fee2e2; color: #991b1b; }
+
+/* ===== CADASTRO: SUGESTÃO DE PREÇO ===== */
+.sugestao-preco {
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+
+.sugestao-preco-linha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.sugestao-preco-linha input[type="range"] { flex: 1; accent-color: var(--primary); }
+.sugestao-preco-linha strong { color: var(--text); min-width: 34px; text-align: right; }
+
+.sugestao-preco-resultado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.sugestao-preco-label { font-size: 0.78rem; color: var(--primary-dark); }
+.sugestao-preco-valor { font-size: 1.05rem; font-weight: 700; color: var(--primary-dark); }
+.sugestao-preco-atual { font-size: 0.8rem; margin-top: 6px; }
+.texto-bom     { color: #166534; }
+.texto-atencao { color: #92400e; }
+.texto-ruim    { color: #991b1b; font-weight: 600; }
+
+/* ===== SUGESTÃO DE NOMES ===== */
+.sugestoes-nome {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.sugestoes-nome-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.sugestao-nome-chip {
+  border: 1px solid var(--primary);
+  background: white;
+  color: var(--primary);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sugestao-nome-chip:active {
+  background: var(--primary);
+  color: white;
+}
+
 /* ===== FILTROS (DASHBOARD) ===== */
 .filter-tabs {
   display: flex;

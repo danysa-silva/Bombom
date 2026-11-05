@@ -3,7 +3,9 @@
 // ============================================================
 let produtos = [];
 let vendas = [];
-let currentFilter = 'hoje';
+let currentFilter = 'mes';
+let mesSelecionado = ''; // 'AAAA-MM' do mês mostrado no painel (vazio = mês atual)
+let graficoMeses = null;
 let paymentStatus = 'dinheiro';
 let pedidoPaymentStatus = 'dinheiro';
 let editingProdutoId = null;
@@ -42,6 +44,7 @@ window.addEventListener('load', async function () {
     if (!nomeUsuario) {
       esconderLoading();
       document.getElementById('tela-nome-cliente').classList.remove('hidden');
+      carregarNomesClientes();
     } else {
       await iniciarModoCliente();
     }
@@ -56,6 +59,7 @@ function entrarComoCliente() {
   nomeUsuario = localStorage.getItem('nomeUsuario') || '';
   if (!nomeUsuario) {
     document.getElementById('tela-nome-cliente').classList.remove('hidden');
+    carregarNomesClientes();
   } else {
     localStorage.setItem('appModo', 'cliente');
     iniciarModoCliente();
@@ -83,6 +87,7 @@ function verificarPin() {
 function salvarNomeUsuario() {
   var nome = document.getElementById('input-nome-usuario').value.trim().replace(/\s+/g, ' ');
   if (!nome) { showToast('Digite seu nome para continuar'); return; }
+  nome = confirmarNomeParecido(nome, 'Você é "{nome}"?\n\nOK = sim, sou eu\nCancelar = não, sou outra pessoa');
   nomeUsuario = nome;
   localStorage.setItem('nomeUsuario', nome);
   localStorage.setItem('appModo', 'cliente');
@@ -96,9 +101,132 @@ function resolverNomeCliente(nomeDigitado) {
   var nome = (nomeDigitado || '').trim().replace(/\s+/g, ' ');
   if (!nome) return nome;
   var existente = vendas.find(function (v) {
-    return (v.nomecomprador || '').trim().toLowerCase() === nome.toLowerCase();
+    return normalizarNome(v.nomecomprador) === normalizarNome(nome);
   });
   return existente ? existente.nomecomprador : nome;
+}
+
+// ============================================================
+// SUGESTÃO DE NOMES (evita cadastrar a mesma cliente com outro nome)
+// ============================================================
+var nomesClientes = []; // nomes já usados em vendas, sem repetição
+
+function normalizarNome(n) {
+  return (n || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
+function montarNomesClientes(lista) {
+  var vistos = {};
+  var nomes = [];
+  lista.forEach(function (n) {
+    n = (n || '').trim();
+    var chave = normalizarNome(n);
+    if (n && !vistos[chave]) { vistos[chave] = true; nomes.push(n); }
+  });
+  nomes.sort(function (a, b) { return a.localeCompare(b, 'pt-BR'); });
+  nomesClientes = nomes;
+}
+
+// Na tela de nome da cliente as vendas ainda não foram carregadas: busca só os nomes
+async function carregarNomesClientes() {
+  if (!window.db) return;
+  var { data, error } = await window.db.from('vendas').select('nomecomprador');
+  if (error) { console.error(error); return; }
+  montarNomesClientes((data || []).map(function (v) { return v.nomecomprador; }));
+}
+
+function sugestoesNome(texto) {
+  var t = normalizarNome(texto);
+  if (t.length < 2) return [];
+  return nomesClientes.filter(function (n) {
+    var c = normalizarNome(n);
+    if (c === t) return false;
+    return c.startsWith(t) || c.split(' ').some(function (p) { return p.startsWith(t); });
+  }).slice(0, 5);
+}
+
+// Nome digitado que é só o começo de um nome já salvo (ex.: "Lidiane" → "Lidiane Laborda")
+function nomeParecido(texto) {
+  var t = normalizarNome(texto);
+  if (!t) return null;
+  if (nomesClientes.some(function (n) { return normalizarNome(n) === t; })) return null;
+  var candidatos = nomesClientes.filter(function (n) {
+    return normalizarNome(n).startsWith(t + ' ');
+  });
+  return candidatos.length === 1 ? candidatos[0] : null;
+}
+
+function mostrarSugestoesNome(input, boxId) {
+  var box = document.getElementById(boxId);
+  if (!box) return;
+  var lista = sugestoesNome(input.value);
+  if (lista.length === 0) { box.innerHTML = ''; box.classList.add('hidden'); return; }
+  box.innerHTML = '<span class="sugestoes-nome-label">Já cadastrado:</span>' +
+    lista.map(function (n, i) {
+      return '<button type="button" class="sugestao-nome-chip" data-i="' + i + '">' + escaparHTML(n) + '</button>';
+    }).join('');
+  box.querySelectorAll('.sugestao-nome-chip').forEach(function (btn) {
+    btn.onclick = function () {
+      input.value = lista[parseInt(btn.dataset.i)];
+      box.innerHTML = '';
+      box.classList.add('hidden');
+      input.focus();
+    };
+  });
+  box.classList.remove('hidden');
+}
+
+// ============================================================
+// EDITAR / JUNTAR NOME DE CLIENTE
+// ============================================================
+function ligarBotoesEditarNome(container) {
+  container.querySelectorAll('.btn-editar-nome').forEach(function (btn) {
+    btn.onclick = function (e) {
+      e.stopPropagation();
+      renomearCliente(btn.dataset.nome);
+    };
+  });
+}
+
+// Troca o nome em todas as vendas da cliente. Se o novo nome já existir,
+// as compras das duas passam a ficar juntas no mesmo nome.
+async function renomearCliente(nomeAtual) {
+  var digitado = prompt('Novo nome para "' + nomeAtual + '":\n\n(Se escrever o nome de outra cliente já cadastrada, as compras das duas ficam juntas.)', nomeAtual);
+  if (digitado === null) return;
+  var novo = digitado.trim().replace(/\s+/g, ' ');
+  if (!novo || novo === nomeAtual) return;
+
+  var chaveAtual = normalizarNome(nomeAtual);
+  var existente = vendas.find(function (v) {
+    var n = normalizarNome(v.nomecomprador);
+    return n === normalizarNome(novo) && n !== chaveAtual;
+  });
+  if (existente) {
+    novo = existente.nomecomprador;
+    if (!confirm('Já existe "' + novo + '".\n\nJuntar todas as compras de "' + nomeAtual + '" com "' + novo + '"?')) return;
+  }
+
+  // Todas as grafias desse nome (maiúsculas, acentos, espaços) mudam juntas
+  var variantes = [];
+  vendas.forEach(function (v) {
+    if (v.nomecomprador && normalizarNome(v.nomecomprador) === chaveAtual && variantes.indexOf(v.nomecomprador) === -1) {
+      variantes.push(v.nomecomprador);
+    }
+  });
+  if (variantes.length === 0) return;
+
+  var { error } = await window.db.from('vendas').update({ nomecomprador: novo }).in('nomecomprador', variantes);
+  if (error) { console.error(error); showToast('Erro ao trocar o nome'); return; }
+  showToast(existente ? '✅ Compras juntadas em "' + novo + '"' : '✅ Nome trocado para "' + novo + '"');
+  await carregarVendas();
+  if (document.getElementById('page-receber').classList.contains('active')) renderizarReceber();
+}
+
+function confirmarNomeParecido(nome, pergunta) {
+  var parecido = nomeParecido(nome);
+  if (parecido && confirm(pergunta.replace('{nome}', parecido))) return parecido;
+  return nome;
 }
 
 function voltarInicio() {
@@ -133,6 +261,7 @@ function togglePrivacidade() {
   localStorage.setItem('privacidade', JSON.stringify(privacidade));
   document.getElementById('btn-privacidade').textContent = privacidade ? '🙈' : '👁';
   renderizarDashboard();
+  renderizarAnaliseProdutos();
   updateVendaPreview();
 }
 
@@ -153,6 +282,14 @@ async function iniciarModoCliente() {
 
   // Se já existe uma venda com esse nome grafado de outro jeito, usa a mesma grafia
   var nomeResolvido = resolverNomeCliente(nomeUsuario);
+  // Cliente salva com nome curto (ex.: "Lidiane") quando já existe o nome completo
+  // (pergunta uma vez só: se ela disser que é outra pessoa, não pergunta de novo)
+  montarNomesClientes(vendas.map(function (v) { return v.nomecomprador; }));
+  if (localStorage.getItem('nomeConfirmado') !== nomeResolvido) {
+    var antes = nomeResolvido;
+    nomeResolvido = confirmarNomeParecido(nomeResolvido, 'Você é "{nome}"?\n\nOK = sim, sou eu\nCancelar = não, sou outra pessoa');
+    if (nomeResolvido === antes) localStorage.setItem('nomeConfirmado', antes);
+  }
   if (nomeResolvido !== nomeUsuario) {
     nomeUsuario = nomeResolvido;
     localStorage.setItem('nomeUsuario', nomeUsuario);
@@ -213,11 +350,13 @@ async function carregarVendas() {
   vendas = todas;
   if (modoAtual === 'admin') {
     renderizarDashboard();
+    renderizarAnaliseProdutos();
     atualizarListaClientes();
   }
 }
 
 function atualizarListaClientes() {
+  montarNomesClientes(vendas.map(function (v) { return v.nomecomprador; }));
   var datalist = document.getElementById('clientes-lista');
   if (!datalist) return;
   var vistos = {};
@@ -587,13 +726,28 @@ function navigate(pagina) {
 // ============================================================
 // DASHBOARD
 // ============================================================
-// Mostra o nome do mês passado no botão (ex.: "Out")
-function atualizarRotuloMesAnterior() {
-  var btn = document.querySelector('.filter-btn[data-filter="mes-anterior"]');
-  if (!btn) return;
-  var nomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-  var agora = new Date();
-  btn.textContent = nomes[new Date(agora.getFullYear(), agora.getMonth() - 1, 1).getMonth()];
+var NOMES_MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+function mesAtualStr() { return dataLocalStr(new Date()).substring(0, 7); }
+
+// Soma (ou subtrai) meses de um 'AAAA-MM'
+function somarMes(mesStr, delta) {
+  var partes = mesStr.split('-');
+  var d = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1 + delta, 1);
+  return dataLocalStr(d).substring(0, 7);
+}
+
+function nomeMes(mesStr, curto) {
+  var partes = mesStr.split('-');
+  var nome = NOMES_MESES[parseInt(partes[1]) - 1];
+  return curto ? nome.substring(0, 3) : nome + ' ' + partes[0];
+}
+
+function mudarMes(delta) {
+  var novo = somarMes(mesSelecionado || mesAtualStr(), delta);
+  if (novo > mesAtualStr()) return;
+  mesSelecionado = novo;
+  setFilter('mes');
 }
 
 function setFilter(filtro) {
@@ -611,11 +765,6 @@ function dataLocalStr(d) {
   return d.getFullYear() + '-' + m + '-' + dia;
 }
 
-function mesAnteriorStr() {
-  var agora = new Date();
-  return dataLocalStr(new Date(agora.getFullYear(), agora.getMonth() - 1, 1)).substring(0, 7);
-}
-
 function dataCaiNoFiltro(dataStr, filtro) {
   if (filtro === 'tudo') return true;
   if (!dataStr) return false;
@@ -627,8 +776,7 @@ function dataCaiNoFiltro(dataStr, filtro) {
     semanaAtras.setDate(semanaAtras.getDate() - 6);
     return dataStr >= dataLocalStr(semanaAtras);
   }
-  if (filtro === 'mes-anterior') return dataStr.startsWith(mesAnteriorStr());
-  return dataStr.startsWith(hojeStr.substring(0, 7));
+  return dataStr.startsWith(mesSelecionado || hojeStr.substring(0, 7));
 }
 
 function getVendasFiltradas() {
@@ -645,19 +793,114 @@ function getVendasRecebidasNoPeriodo() {
   });
 }
 
+// Agrupa as vendas não pagas por cliente (mesma regra da tela "A Receber")
+function agruparDevedores() {
+  var mapa = {};
+  vendas.forEach(function (v) {
+    if (v.recebido) return;
+    var nome = (v.nomecomprador || 'Sem nome').trim();
+    var chave = normalizarNome(nome);
+    if (!mapa[chave]) mapa[chave] = { nome: nome, total: 0, qtd: 0 };
+    mapa[chave].total += parseFloat(v.total) || 0;
+    mapa[chave].qtd++;
+  });
+  return Object.values(mapa).sort(function (a, b) { return b.total - a.total; });
+}
+
+// Totais por mês: vendido e lucro pela data da venda, recebido pela data do pagamento
+function totaisPorMes(qtdMeses) {
+  var fim = mesAtualStr();
+  var meses = [];
+  for (var i = qtdMeses - 1; i >= 0; i--) meses.push(somarMes(fim, -i));
+  var t = {};
+  meses.forEach(function (m) { t[m] = { vendido: 0, recebido: 0, lucro: 0 }; });
+  vendas.forEach(function (v) {
+    var mv = (v.data || '').substring(0, 7);
+    if (t[mv]) { t[mv].vendido += parseFloat(v.total) || 0; t[mv].lucro += parseFloat(v.lucro) || 0; }
+    if (v.recebido) {
+      var mr = (v.data_recebimento || v.data || '').substring(0, 7);
+      if (t[mr]) t[mr].recebido += parseFloat(v.total) || 0;
+    }
+  });
+  return { meses: meses, totais: t };
+}
+
+function renderizarGraficoMeses() {
+  var canvas = document.getElementById('grafico-meses');
+  if (!canvas || typeof Chart === 'undefined') return;
+  var dados = totaisPorMes(6);
+  var serie = function (campo) {
+    return dados.meses.map(function (m) { return Math.round(dados.totais[m][campo] * 100) / 100; });
+  };
+  var config = {
+    type: 'bar',
+    data: {
+      labels: dados.meses.map(function (m) { return nomeMes(m, true); }),
+      datasets: [
+        { label: 'Vendi', data: serie('vendido'), backgroundColor: '#2a78d6', borderRadius: 4, maxBarThickness: 14 },
+        { label: 'Recebi', data: serie('recebido'), backgroundColor: '#1baf7a', borderRadius: 4, maxBarThickness: 14 },
+        { label: 'Lucro', data: serie('lucro'), backgroundColor: '#eda100', borderRadius: 4, maxBarThickness: 14 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: function (c) { return c.dataset.label + ': ' + (privacidade ? '• • •' : formatarDinheiro(c.raw)); } } }
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { color: '#ece9f5' }, ticks: { display: !privacidade, callback: function (v) { return 'R$ ' + v; } } }
+      }
+    }
+  };
+  if (graficoMeses) graficoMeses.destroy();
+  graficoMeses = new Chart(canvas, config);
+}
+
+function renderizarDevedoresDashboard() {
+  var box = document.getElementById('dash-devedores');
+  if (!box) return;
+  var grupos = agruparDevedores();
+  if (grupos.length === 0) {
+    box.innerHTML = '<div class="dash-vazio">Ninguém está devendo 🎉</div>';
+    return;
+  }
+  var top = grupos.slice(0, 5);
+  box.innerHTML = top.map(function (g) {
+    return (
+      '<div class="devedor-linha">' +
+        '<span class="devedor-nome">' + escaparHTML(g.nome) + '</span>' +
+        '<span class="devedor-valor">' + (privacidade ? '• • •' : formatarDinheiro(g.total)) + '</span>' +
+        '<button class="btn-editar-nome" data-nome="' + escaparAttr(g.nome) + '" aria-label="Editar nome">✏️</button>' +
+      '</div>'
+    );
+  }).join('') +
+  '<button class="devedor-ver-todos" onclick="navigate(\'receber\')">Ver todos (' + grupos.length + ') ›</button>';
+  ligarBotoesEditarNome(box);
+}
+
 function renderizarDashboard() {
-  atualizarRotuloMesAnterior();
+  // Navegação de mês só aparece no filtro "Mês"
+  var mesMostrado = mesSelecionado || mesAtualStr();
+  document.getElementById('mes-nav').classList.toggle('hidden', currentFilter !== 'mes');
+  document.getElementById('mes-nav-titulo').textContent = nomeMes(mesMostrado);
+  document.getElementById('mes-nav-prox').style.visibility = mesMostrado >= mesAtualStr() ? 'hidden' : 'visible';
+
   var filtradas = getVendasFiltradas();
-  var totalVendido = 0, aReceber = 0, lucro = 0;
+  var totalVendido = 0, lucro = 0;
 
   filtradas.forEach(function (v) {
     totalVendido += parseFloat(v.total) || 0;
     lucro += parseFloat(v.lucro) || 0;
-    if (!v.recebido) aReceber += parseFloat(v.total) || 0;
   });
 
   var recebidasPeriodo = getVendasRecebidasNoPeriodo();
   var recebido = recebidasPeriodo.reduce(function (s, v) { return s + (parseFloat(v.total) || 0); }, 0);
+
+  // "Falta receber" é sempre o total em aberto, de qualquer mês
+  var devedores = agruparDevedores();
+  var aReceber = devedores.reduce(function (s, g) { return s + g.total; }, 0);
 
   var mascarar = function(v) { return privacidade ? '• • • •' : formatarDinheiro(v); };
   document.getElementById('dash-total-vendido').textContent = mascarar(totalVendido);
@@ -665,9 +908,18 @@ function renderizarDashboard() {
   document.getElementById('dash-a-receber').textContent = mascarar(aReceber);
   document.getElementById('dash-lucro').textContent = mascarar(lucro);
   document.getElementById('dash-qtd-vendas').textContent = filtradas.length + (filtradas.length === 1 ? ' venda' : ' vendas');
+  document.getElementById('dash-margem').textContent = totalVendido > 0
+    ? 'margem ' + Math.round(100 * lucro / totalVendido) + '%'
+    : 'margem —';
+  document.getElementById('dash-a-receber-sub').textContent = devedores.length === 0
+    ? 'tudo recebido'
+    : devedores.length + (devedores.length === 1 ? ' pessoa' : ' pessoas') + ', todos os meses';
 
-  var tituloPeriodo = { hoje: 'Recebidos Hoje', semana: 'Recebidos na Semana', mes: 'Recebidos no Mês', 'mes-anterior': 'Recebidos no Mês Passado', tudo: 'Todos os Recebidos' };
-  document.getElementById('dash-recebidos-titulo').textContent = tituloPeriodo[currentFilter] || 'Recebidos no Período';
+  renderizarGraficoMeses();
+  renderizarDevedoresDashboard();
+
+  var tituloPeriodo = { hoje: 'Recebidos hoje', semana: 'Recebidos na semana', mes: 'Recebidos em ' + nomeMes(mesMostrado), tudo: 'Todos os recebidos' };
+  document.getElementById('dash-recebidos-titulo').textContent = tituloPeriodo[currentFilter] || 'Recebidos no período';
 
   var containerRecebidos = document.getElementById('dash-recebidos-periodo');
   if (recebidasPeriodo.length === 0) {
@@ -693,7 +945,7 @@ function renderizarDashboard() {
   }
 
   var container = document.getElementById('dash-ultimas-vendas');
-  var limite = currentFilter === 'hoje' ? 15 : filtradas.length;
+  var limite = currentFilter === 'tudo' ? 50 : filtradas.length;
   var recentes = filtradas.slice(0, limite);
 
   if (recentes.length === 0) {
@@ -845,6 +1097,7 @@ async function registrarVenda() {
   if (!produtoId) { showToast('Selecione um produto'); return; }
   if (qty <= 0)   { showToast('Informe uma quantidade válida'); return; }
   if (!nomeCliente) { showToast('Informe o nome do cliente'); return; }
+  nomeCliente = confirmarNomeParecido(nomeCliente, 'Já existe a cliente "{nome}".\n\nOK = usar esse nome\nCancelar = é outra pessoa');
 
   var produto = produtos.find(function (p) { return p.id === produtoId; });
   if (!produto) return;
@@ -903,7 +1156,105 @@ async function registrarVenda() {
 // ============================================================
 // PRODUTOS (ADMIN)
 // ============================================================
+// ============================================================
+// ANÁLISE DE PRODUTOS E SUGESTÃO DE PREÇO
+// ============================================================
+var MARGEM_BAIXA = 30; // abaixo disso (%) o produto entra em "precisam de atenção"
+
+function margemPct(precovenda, precocusto) {
+  var pv = parseFloat(precovenda) || 0, pc = parseFloat(precocusto) || 0;
+  return pv > 0 ? Math.round(100 * (pv - pc) / pv) : 0;
+}
+
+function renderizarAnaliseProdutos() {
+  var box = document.getElementById('produtos-analise');
+  if (!box || produtos.length === 0) { if (box) box.innerHTML = ''; return; }
+
+  // Lucro total já ganho com cada produto (pelas vendas)
+  var lucroPorProduto = {};
+  vendas.forEach(function (v) {
+    var chave = v.produtoid || v.produtonome;
+    lucroPorProduto[chave] = (lucroPorProduto[chave] || 0) + (parseFloat(v.lucro) || 0);
+  });
+
+  var lista = produtos.map(function (p) {
+    return { p: p, lucro: lucroPorProduto[p.id] || 0, margem: margemPct(p.precovenda, p.precocusto) };
+  });
+
+  var melhores = lista.filter(function (x) { return x.lucro > 0; })
+    .sort(function (a, b) { return b.lucro - a.lucro; }).slice(0, 5);
+  var atencao = lista.filter(function (x) { return x.margem < MARGEM_BAIXA; })
+    .sort(function (a, b) { return a.margem - b.margem; });
+
+  var pill = function (m) {
+    var cls = m < 0 ? 'pill-ruim' : m < MARGEM_BAIXA ? 'pill-atencao' : 'pill-bom';
+    var txt = m < 0 ? 'prejuízo' : m + '%';
+    return '<span class="pill-margem ' + cls + '">' + txt + '</span>';
+  };
+  var linha = function (x, direita) {
+    return '<div class="devedor-linha"><span class="devedor-nome">' + escaparHTML(x.p.nome) +
+      (x.p.oculto ? ' <small class="texto-suave">(oculto)</small>' : '') + '</span>' + direita + '</div>';
+  };
+
+  var html = '';
+  if (melhores.length) {
+    html += '<div class="dash-bloco"><div class="dash-bloco-titulo">Os que mais dão lucro</div>' +
+      melhores.map(function (x) {
+        return linha(x, '<span class="devedor-valor">' + (privacidade ? '• • •' : formatarDinheiro(x.lucro)) + ' ' + pill(x.margem) + '</span>');
+      }).join('') + '</div>';
+  }
+  if (atencao.length) {
+    html += '<div class="dash-bloco"><div class="dash-bloco-titulo">Precisam de atenção <small class="texto-suave">(margem abaixo de ' + MARGEM_BAIXA + '%)</small></div>' +
+      atencao.map(function (x) {
+        return linha(x, '<span class="devedor-valor">' + pill(x.margem) +
+          ' <button class="btn-link" onclick="openProdutoModal(\'' + x.p.id + '\')">ajustar</button></span>');
+      }).join('') + '</div>';
+  }
+  box.innerHTML = html;
+}
+
+// Preço para atingir a margem desejada, arredondado para cima em R$ 0,50
+function precoParaMargem(custo, margem) {
+  if (!(custo > 0) || margem >= 100) return 0;
+  return Math.ceil((custo / (1 - margem / 100)) * 2) / 2;
+}
+
+function atualizarSugestaoPreco() {
+  var box = document.getElementById('sugestao-preco');
+  var custo = parseFloat(document.getElementById('produto-custo').value);
+  if (!(custo > 0)) { box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
+
+  var margem = parseInt(document.getElementById('margem-desejada').value);
+  document.getElementById('margem-desejada-valor').textContent = margem + '%';
+  var sugerido = precoParaMargem(custo, margem);
+  document.getElementById('preco-sugerido').textContent = formatarDinheiro(sugerido) +
+    ' (lucro ' + formatarDinheiro(sugerido - custo) + ')';
+
+  var venda = parseFloat(document.getElementById('produto-venda').value);
+  var atual = document.getElementById('margem-atual');
+  if (venda > 0) {
+    var m = margemPct(venda, custo);
+    atual.textContent = 'Com o preço atual (' + formatarDinheiro(venda) + ') a margem é ' + m + '%' +
+      (m < 0 ? ' — você perde dinheiro em cada venda' : m < MARGEM_BAIXA ? ' — está baixa' : '');
+    atual.className = 'sugestao-preco-atual ' + (m < 0 ? 'texto-ruim' : m < MARGEM_BAIXA ? 'texto-atencao' : 'texto-bom');
+  } else {
+    atual.textContent = '';
+  }
+}
+
+function usarPrecoSugerido() {
+  var custo = parseFloat(document.getElementById('produto-custo').value);
+  var margem = parseInt(document.getElementById('margem-desejada').value);
+  var sugerido = precoParaMargem(custo, margem);
+  if (sugerido > 0) {
+    document.getElementById('produto-venda').value = sugerido.toFixed(2);
+    atualizarSugestaoPreco();
+  }
+}
+
 function renderizarProdutos() {
+  renderizarAnaliseProdutos();
   var container = document.getElementById('lista-produtos');
   if (produtos.length === 0) {
     container.innerHTML = '<div class="empty-state"><div class="empty-icon">🍫</div><p>Nenhum produto cadastrado ainda.<br>Clique em "+ Novo Produto" para começar!</p></div>';
@@ -978,6 +1329,7 @@ function openProdutoModal(produtoId) {
     document.getElementById('produto-estoque-min').value = '5';
     document.getElementById('modal-produto-title').textContent = 'Novo Produto';
   }
+  atualizarSugestaoPreco();
   document.getElementById('modal-produto').classList.remove('hidden');
   document.getElementById('overlay').classList.remove('hidden');
 }
@@ -1082,7 +1434,7 @@ function renderizarReceber() {
   var gruposMap = {};
   naoRecebidas.forEach(function (v) {
     var nome = (v.nomecomprador || 'Sem nome').trim();
-    var chave = nome.toLowerCase();
+    var chave = normalizarNome(nome);
     if (!gruposMap[chave]) gruposMap[chave] = { nome: nome, total: 0, vendas: [], ids: [] };
     gruposMap[chave].total += parseFloat(v.total) || 0;
     gruposMap[chave].vendas.push(v);
@@ -1136,7 +1488,9 @@ function renderizarReceber() {
       '<div class="receber-grupo">' +
         '<div class="receber-header">' +
           '<div>' +
-            '<div class="receber-cliente">👤 ' + escaparHTML(grupo.nome) + '</div>' +
+            '<div class="receber-cliente">👤 ' + escaparHTML(grupo.nome) +
+              (grupo.nome !== 'Sem nome' ? ' <button class="btn-editar-nome" data-nome="' + escaparAttr(grupo.nome) + '" aria-label="Editar nome">✏️</button>' : '') +
+            '</div>' +
             '<div class="receber-deve">A receber: ' + formatarDinheiro(grupo.total) + '</div>' +
           '</div>' +
           '<div class="receber-qtd">' + grupo.ids.length + ' item' + (grupo.ids.length > 1 ? 's' : '') + '</div>' +
@@ -1146,6 +1500,7 @@ function renderizarReceber() {
       '</div>'
     );
   }).join('');
+  ligarBotoesEditarNome(container);
 }
 
 // Marca como recebido e registra a data do recebimento. Se a coluna
@@ -1255,6 +1610,11 @@ function escaparHTML(texto) {
   var div = document.createElement('div');
   div.appendChild(document.createTextNode(String(texto || '')));
   return div.innerHTML;
+}
+
+// Para usar dentro de atributos HTML (data-nome="...")
+function escaparAttr(texto) {
+  return escaparHTML(texto).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function showToast(mensagem, duracao) {

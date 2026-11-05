@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#8b5cf6">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>Gaveta da Felicidade</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20261105">
 </head>
 <body>
 <div id="app">
@@ -46,7 +46,9 @@
       <p>Seu nome será salvo para a Danielle saber quem fez o pedido.</p>
       <div class="form-group">
         <input type="text" id="input-nome-usuario" placeholder="Digite seu nome..."
-               maxlength="50" autocomplete="off" onkeydown="if(event.key==='Enter') salvarNomeUsuario()">
+               maxlength="50" autocomplete="off" onkeydown="if(event.key==='Enter') salvarNomeUsuario()"
+               oninput="mostrarSugestoesNome(this, 'sugestoes-nome-usuario')">
+        <div id="sugestoes-nome-usuario" class="sugestoes-nome hidden"></div>
       </div>
       <button class="btn-primary" onclick="salvarNomeUsuario()">Entrar</button>
       <button class="btn-outline" onclick="voltarInicio()" style="margin-top:8px">← Voltar</button>
@@ -75,35 +77,55 @@
     <!-- DASHBOARD (admin) -->
     <section id="page-dashboard" class="page active">
       <div class="filter-tabs">
-        <button class="filter-btn active" data-filter="hoje" onclick="setFilter('hoje')">Hoje</button>
+        <button class="filter-btn" data-filter="hoje" onclick="setFilter('hoje')">Hoje</button>
         <button class="filter-btn" data-filter="semana" onclick="setFilter('semana')">Semana</button>
-        <button class="filter-btn" data-filter="mes" onclick="setFilter('mes')">Mês</button>
-        <button class="filter-btn" data-filter="mes-anterior" onclick="setFilter('mes-anterior')" title="Mês passado">Mês ant.</button>
+        <button class="filter-btn active" data-filter="mes" onclick="setFilter('mes')">Mês</button>
         <button class="filter-btn" data-filter="tudo" onclick="setFilter('tudo')">Tudo</button>
+      </div>
+      <div id="mes-nav" class="mes-nav">
+        <button class="mes-nav-btn" onclick="mudarMes(-1)" aria-label="Mês anterior">‹</button>
+        <span id="mes-nav-titulo">—</span>
+        <button class="mes-nav-btn" id="mes-nav-prox" onclick="mudarMes(1)" aria-label="Próximo mês">›</button>
       </div>
       <div class="cards-grid">
         <div class="card card-blue">
-          <div class="card-label">Total Vendido</div>
+          <div class="card-label">🛍️ Vendi</div>
           <div class="card-value" id="dash-total-vendido">R$ 0,00</div>
           <div class="card-sub" id="dash-qtd-vendas">0 vendas</div>
         </div>
         <div class="card card-green">
-          <div class="card-label">Recebido</div>
+          <div class="card-label">💵 Recebi</div>
           <div class="card-value" id="dash-recebido">R$ 0,00</div>
-          <div class="card-sub">já em mãos</div>
-        </div>
-        <div class="card card-orange">
-          <div class="card-label">A Receber</div>
-          <div class="card-value" id="dash-a-receber">R$ 0,00</div>
-          <div class="card-sub">quando receber</div>
+          <div class="card-sub">dinheiro que entrou</div>
         </div>
         <div class="card card-purple">
-          <div class="card-label">Lucro</div>
+          <div class="card-label">📈 Lucro</div>
           <div class="card-value" id="dash-lucro">R$ 0,00</div>
-          <div class="card-sub">lucro bruto</div>
+          <div class="card-sub" id="dash-margem">margem —</div>
+        </div>
+        <div class="card card-orange">
+          <div class="card-label">⏳ Falta receber</div>
+          <div class="card-value" id="dash-a-receber">R$ 0,00</div>
+          <div class="card-sub" id="dash-a-receber-sub">de todos os meses</div>
         </div>
       </div>
-      <div class="section-title">Últimas Vendas</div>
+
+      <div class="dash-bloco">
+        <div class="dash-bloco-titulo">Últimos meses</div>
+        <div class="grafico-legenda">
+          <span><i style="background:#2a78d6"></i>Vendi</span>
+          <span><i style="background:#1baf7a"></i>Recebi</span>
+          <span><i style="background:#eda100"></i>Lucro</span>
+        </div>
+        <div class="grafico-area"><canvas id="grafico-meses" role="img" aria-label="Vendido, recebido e lucro dos últimos 6 meses"></canvas></div>
+      </div>
+
+      <div class="dash-bloco">
+        <div class="dash-bloco-titulo">Quem está devendo</div>
+        <div id="dash-devedores"></div>
+      </div>
+
+      <div class="section-title">Vendas do período</div>
       <div id="dash-ultimas-vendas"></div>
       <div class="section-title" id="dash-recebidos-titulo">Recebidos no Período</div>
       <div id="dash-recebidos-periodo"></div>
@@ -127,7 +149,9 @@
         </div>
         <div class="form-group">
           <label>Nome do Cliente</label>
-          <input type="text" id="venda-cliente" placeholder="Nome de quem está comprando..." list="clientes-lista" autocomplete="off">
+          <input type="text" id="venda-cliente" placeholder="Nome de quem está comprando..." autocomplete="off"
+                 oninput="mostrarSugestoesNome(this, 'sugestoes-venda-cliente')">
+          <div id="sugestoes-venda-cliente" class="sugestoes-nome hidden"></div>
           <datalist id="clientes-lista"></datalist>
         </div>
         <div class="form-group">
@@ -156,7 +180,9 @@
     <!-- PRODUTOS (admin) -->
     <section id="page-produtos" class="page">
       <button class="btn-primary" onclick="openProdutoModal()">+ Novo Produto</button>
-      <div id="lista-produtos" style="margin-top:12px"></div>
+      <div id="produtos-analise"></div>
+      <div class="section-title">Todos os produtos</div>
+      <div id="lista-produtos"></div>
     </section>
 
     <!-- ESTOQUE (admin) -->
@@ -282,12 +308,27 @@
     <div class="form-row">
       <div class="form-group">
         <label>Preço de Custo (R$)</label>
-        <input type="number" id="produto-custo" placeholder="0.00" step="0.01" min="0">
+        <input type="number" id="produto-custo" placeholder="0.00" step="0.01" min="0" oninput="atualizarSugestaoPreco()">
       </div>
       <div class="form-group">
         <label>Preço de Venda (R$)</label>
-        <input type="number" id="produto-venda" placeholder="0.00" step="0.01" min="0">
+        <input type="number" id="produto-venda" placeholder="0.00" step="0.01" min="0" oninput="atualizarSugestaoPreco()">
       </div>
+    </div>
+    <div id="sugestao-preco" class="sugestao-preco hidden">
+      <div class="sugestao-preco-linha">
+        <span>Margem que eu quero</span>
+        <input type="range" id="margem-desejada" min="20" max="70" step="5" value="40" oninput="atualizarSugestaoPreco()">
+        <strong id="margem-desejada-valor">40%</strong>
+      </div>
+      <div class="sugestao-preco-resultado">
+        <div>
+          <div class="sugestao-preco-label">Preço sugerido</div>
+          <div class="sugestao-preco-valor" id="preco-sugerido">R$ 0,00</div>
+        </div>
+        <button type="button" class="btn-secondary" onclick="usarPrecoSugerido()">Usar este preço</button>
+      </div>
+      <div class="sugestao-preco-atual" id="margem-atual"></div>
     </div>
     <div class="form-row">
       <div class="form-group">
@@ -331,7 +372,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="config.js"></script>
-<script src="app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<!-- Troque o número de versão (?v=) a cada atualização para o celular baixar os arquivos novos -->
+<script src="config.js?v=20261105"></script>
+<script src="app.js?v=20261105"></script>
 </body>
 </html>
