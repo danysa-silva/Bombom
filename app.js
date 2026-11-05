@@ -26,7 +26,7 @@ window.addEventListener('load', async function () {
     return;
   }
 
-  const hoje = new Date().toISOString().split('T')[0];
+  const hoje = dataLocalStr(new Date());
   document.getElementById('venda-data').value = hoje;
 
   const modoSalvo = localStorage.getItem('appModo');
@@ -640,7 +640,7 @@ function setCarrinhoPayment(status) {
 async function confirmarCarrinho() {
   if (carrinho.length === 0) return;
   var btn = document.getElementById('btn-confirmar-carrinho');
-  var hoje = new Date().toISOString().split('T')[0];
+  var hoje = dataLocalStr(new Date());
   var totalGeral = 0;
 
   for (var i = 0; i < carrinho.length; i++) {
@@ -1506,7 +1506,7 @@ function renderizarReceber() {
 // Marca como recebido e registra a data do recebimento. Se a coluna
 // data_recebimento ainda não existir no banco, cai de volta pro update simples.
 async function confirmarRecebimento(aplicarFiltro) {
-  var hoje = new Date().toISOString().split('T')[0];
+  var hoje = dataLocalStr(new Date());
   var resp = await aplicarFiltro(window.db.from('vendas').update({ recebido: true, data_recebimento: hoje }));
   if (resp.error) {
     resp = await aplicarFiltro(window.db.from('vendas').update({ recebido: true }));
