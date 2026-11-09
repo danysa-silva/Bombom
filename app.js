@@ -880,6 +880,138 @@ function renderizarDevedoresDashboard() {
   ligarBotoesEditarNome(box);
 }
 
+// ===== RANKINGS (produtos e clientes, no período do filtro) =====
+var rankingAba = 'produtos';
+var rankingOrdem = { produtos: 'qtd', clientes: 'valor' };
+var DIAS_SUMIDA = 30;
+
+var ORDENS_RANKING = {
+  produtos: [
+    { id: 'qtd', rotulo: 'Mais vendidos' },
+    { id: 'valor', rotulo: 'Mais faturamento' },
+    { id: 'lucro', rotulo: 'Mais lucro' }
+  ],
+  clientes: [
+    { id: 'valor', rotulo: 'Quem mais gastou' },
+    { id: 'vezes', rotulo: 'Quem mais vezes comprou' }
+  ]
+};
+
+function setRankingAba(aba) {
+  rankingAba = aba;
+  document.querySelectorAll('.ranking-aba').forEach(function (b) {
+    b.classList.toggle('active', b.dataset.aba === aba);
+  });
+  renderizarRanking();
+}
+
+function setRankingOrdem(ordem) {
+  rankingOrdem[rankingAba] = ordem;
+  renderizarRanking();
+}
+
+function rankingProdutos(lista) {
+  var mapa = {};
+  lista.forEach(function (v) {
+    var nome = (v.produtonome || 'Sem nome').trim();
+    var chave = normalizarNome(nome);
+    if (!mapa[chave]) mapa[chave] = { nome: nome, qtd: 0, valor: 0, lucro: 0 };
+    mapa[chave].qtd += parseInt(v.quantidade) || 0;
+    mapa[chave].valor += parseFloat(v.total) || 0;
+    mapa[chave].lucro += parseFloat(v.lucro) || 0;
+  });
+  return Object.values(mapa);
+}
+
+function rankingClientes(lista) {
+  // Última compra e dívida olham todas as vendas, não só as do período
+  var ultima = {}, deve = {};
+  vendas.forEach(function (v) {
+    var k = normalizarNome(v.nomecomprador || '');
+    if (!k) return;
+    if ((v.data || '') > (ultima[k] || '')) ultima[k] = v.data;
+    if (!v.recebido) deve[k] = (deve[k] || 0) + (parseFloat(v.total) || 0);
+  });
+  var mapa = {};
+  lista.forEach(function (v) {
+    var nome = (v.nomecomprador || '').trim();
+    if (!nome) return;
+    var chave = normalizarNome(nome);
+    if (!mapa[chave]) mapa[chave] = { nome: nome, valor: 0, itens: 0, dias: {}, deve: deve[chave] || 0, ultima: ultima[chave] || '' };
+    mapa[chave].valor += parseFloat(v.total) || 0;
+    mapa[chave].itens += parseInt(v.quantidade) || 0;
+    mapa[chave].dias[v.data] = true;
+  });
+  return Object.values(mapa).map(function (c) {
+    c.vezes = Object.keys(c.dias).length;
+    return c;
+  });
+}
+
+function diasDesde(dataStr) {
+  if (!dataStr) return null;
+  var p = dataStr.split('-');
+  var d = new Date(+p[0], +p[1] - 1, +p[2]);
+  var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  return Math.round((hoje - d) / 86400000);
+}
+
+function renderizarRanking() {
+  var box = document.getElementById('ranking-lista');
+  if (!box) return;
+  var mesMostrado = mesSelecionado || mesAtualStr();
+  var periodo = { hoje: 'hoje', semana: 'últimos 7 dias', mes: nomeMes(mesMostrado), tudo: 'desde o início' };
+  document.getElementById('ranking-periodo').textContent = '· ' + (periodo[currentFilter] || '');
+
+  var ordem = rankingOrdem[rankingAba];
+  document.getElementById('ranking-ordem').innerHTML = ORDENS_RANKING[rankingAba].map(function (o) {
+    return '<button class="ranking-chip' + (o.id === ordem ? ' active' : '') + '" onclick="setRankingOrdem(\'' + o.id + '\')">' + o.rotulo + '</button>';
+  }).join('');
+
+  var filtradas = getVendasFiltradas();
+  var dinheiro = function (v) { return privacidade ? '• • •' : formatarDinheiro(v); };
+  var medalha = function (i) { return ['🥇', '🥈', '🥉'][i] || (i + 1) + 'º'; };
+  var itens = rankingAba === 'produtos' ? rankingProdutos(filtradas) : rankingClientes(filtradas);
+  itens.sort(function (a, b) { return (b[ordem] - a[ordem]) || (b.valor - a.valor); });
+
+  if (itens.length === 0) {
+    box.innerHTML = '<div class="dash-vazio">Nenhuma venda neste período</div>';
+    return;
+  }
+
+  var maximo = itens[0][ordem] || 1;
+  var top = itens.slice(0, 10);
+
+  box.innerHTML = top.map(function (it, i) {
+    var principal, detalhe;
+    if (rankingAba === 'produtos') {
+      principal = ordem === 'qtd' ? it.qtd + ' un.' : dinheiro(it[ordem]);
+      detalhe = it.qtd + ' un. · vendeu ' + dinheiro(it.valor) + ' · lucro ' + dinheiro(it.lucro);
+    } else {
+      principal = ordem === 'vezes' ? it.vezes + (it.vezes === 1 ? ' vez' : ' vezes') : dinheiro(it.valor);
+      var dias = diasDesde(it.ultima);
+      var partes = [it.vezes + (it.vezes === 1 ? ' compra' : ' compras'), dinheiro(it.valor)];
+      if (it.deve > 0.009) partes.push('<span class="texto-atencao">deve ' + dinheiro(it.deve) + '</span>');
+      if (dias !== null && dias > DIAS_SUMIDA) partes.push('<span class="ranking-sumida">💤 sumiu há ' + dias + ' dias</span>');
+      else if (dias !== null) partes.push('última ' + (dias === 0 ? 'hoje' : dias === 1 ? 'ontem' : 'há ' + dias + ' dias'));
+      detalhe = partes.join(' · ');
+    }
+    var largura = Math.max(4, Math.round(100 * it[ordem] / maximo));
+    return (
+      '<div class="ranking-linha">' +
+        '<span class="ranking-pos">' + medalha(i) + '</span>' +
+        '<div class="ranking-corpo">' +
+          '<div class="ranking-topo"><span class="ranking-nome">' + escaparHTML(it.nome) + '</span>' +
+          '<span class="ranking-valor">' + principal + '</span></div>' +
+          '<div class="ranking-barra"><i style="width:' + largura + '%"></i></div>' +
+          '<div class="ranking-detalhe">' + detalhe + '</div>' +
+        '</div>' +
+      '</div>'
+    );
+  }).join('') +
+  (itens.length > 10 ? '<div class="dash-vazio">+ ' + (itens.length - 10) + ' no período</div>' : '');
+}
+
 function renderizarDashboard() {
   // Navegação de mês só aparece no filtro "Mês"
   var mesMostrado = mesSelecionado || mesAtualStr();
@@ -917,6 +1049,7 @@ function renderizarDashboard() {
 
   renderizarGraficoMeses();
   renderizarDevedoresDashboard();
+  renderizarRanking();
 
   var tituloPeriodo = { hoje: 'Recebidos hoje', semana: 'Recebidos na semana', mes: 'Recebidos em ' + nomeMes(mesMostrado), tudo: 'Todos os recebidos' };
   document.getElementById('dash-recebidos-titulo').textContent = tituloPeriodo[currentFilter] || 'Recebidos no período';

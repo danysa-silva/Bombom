@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#8b5cf6">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>Gaveta da Felicidade</title>
-  <link rel="stylesheet" href="style.css?v=20261105b">
+  <link rel="stylesheet" href="style.css?v=20261109a">
 </head>
 <body>
 <div id="app">
@@ -123,6 +123,16 @@
       <div class="dash-bloco">
         <div class="dash-bloco-titulo">Quem está devendo</div>
         <div id="dash-devedores"></div>
+      </div>
+
+      <div class="dash-bloco">
+        <div class="dash-bloco-titulo">🏆 Rankings <span class="ranking-periodo" id="ranking-periodo"></span></div>
+        <div class="ranking-abas">
+          <button class="ranking-aba active" data-aba="produtos" onclick="setRankingAba('produtos')">🍬 Produtos</button>
+          <button class="ranking-aba" data-aba="clientes" onclick="setRankingAba('clientes')">👑 Clientes</button>
+        </div>
+        <div class="ranking-ordem" id="ranking-ordem"></div>
+        <div id="ranking-lista"></div>
       </div>
 
       <div class="section-title">Vendas do período</div>
@@ -374,7 +384,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <!-- Troque o número de versão (?v=) a cada atualização para o celular baixar os arquivos novos -->
-<script src="config.js?v=20261105b"></script>
-<script src="app.js?v=20261105b"></script>
+<script src="config.js?v=20261109a"></script>
+<script src="app.js?v=20261109a"></script>
 </body>
 </html>
