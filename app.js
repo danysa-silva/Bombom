@@ -1376,6 +1376,62 @@ function atualizarSugestaoPreco() {
   }
 }
 
+// ===== CALCULADORA DO PACOTE =====
+// Total pago ÷ unidades = custo; venda vem da margem; unidades entram no estoque.
+var estoqueBase = 0;          // estoque que o produto tinha ao abrir o formulário
+var vendaAutomatica = false;  // true enquanto o preço de venda vem da margem
+
+function calcularPacote() {
+  var total = parseFloat(document.getElementById('pacote-total').value);
+  var qtd = parseInt(document.getElementById('pacote-qtd').value);
+  var box = document.getElementById('pacote-resultado');
+  var campoEstoque = document.getElementById('produto-estoque');
+
+  if (!(total > 0) || !(qtd > 0)) {
+    box.classList.add('hidden');
+    if (!(qtd > 0)) campoEstoque.value = editingProdutoId ? estoqueBase : '';
+    atualizarSugestaoPreco();
+    return;
+  }
+
+  var custo = Math.round((total / qtd) * 100) / 100;
+  document.getElementById('produto-custo').value = custo.toFixed(2);
+
+  var margem = parseInt(document.getElementById('margem-desejada').value);
+  var venda = precoParaMargem(custo, margem);
+  document.getElementById('produto-venda').value = venda.toFixed(2);
+  vendaAutomatica = true;
+
+  var novoEstoque = estoqueBase + qtd;
+  campoEstoque.value = novoEstoque;
+
+  box.innerHTML =
+    '<div>Custo por unidade: <strong>' + formatarDinheiro(custo) + '</strong></div>' +
+    '<div>Vendendo a ' + formatarDinheiro(venda) + ', o pacote rende <strong class="texto-bom">' +
+      formatarDinheiro(venda * qtd) + '</strong> (lucro ' + formatarDinheiro(venda * qtd - total) + ')</div>' +
+    '<div>Estoque: ' + (estoqueBase > 0 ? estoqueBase + ' + ' + qtd + ' = ' : '') + '<strong>' + novoEstoque + ' un.</strong></div>';
+  box.classList.remove('hidden');
+  atualizarSugestaoPreco();
+}
+
+function margemMudou() {
+  if (vendaAutomatica && parseFloat(document.getElementById('pacote-qtd').value) > 0) {
+    calcularPacote();
+  } else {
+    atualizarSugestaoPreco();
+  }
+}
+
+function custoDigitadoAMao() {
+  // Se ela mudar o custo na mão, o pacote deixa de valer
+  if (document.getElementById('pacote-total').value) {
+    document.getElementById('pacote-total').value = '';
+    document.getElementById('pacote-resultado').classList.add('hidden');
+  }
+  vendaAutomatica = false;
+  atualizarSugestaoPreco();
+}
+
 function usarPrecoSugerido() {
   var custo = parseFloat(document.getElementById('produto-custo').value);
   var margem = parseInt(document.getElementById('margem-desejada').value);
@@ -1462,6 +1518,11 @@ function openProdutoModal(produtoId) {
     document.getElementById('produto-estoque-min').value = '5';
     document.getElementById('modal-produto-title').textContent = 'Novo Produto';
   }
+  estoqueBase = parseInt(document.getElementById('produto-estoque').value) || 0;
+  vendaAutomatica = false;
+  document.getElementById('pacote-total').value = '';
+  document.getElementById('pacote-qtd').value = '';
+  document.getElementById('pacote-resultado').classList.add('hidden');
   atualizarSugestaoPreco();
   document.getElementById('modal-produto').classList.remove('hidden');
   document.getElementById('overlay').classList.remove('hidden');

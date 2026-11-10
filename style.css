@@ -398,6 +398,12 @@ main {
 
 .dash-vazio { font-size: 0.88rem; color: var(--text-muted); padding: 6px 0; }
 
+/* ===== CALCULADORA DO PACOTE ===== */
+.pacote-box { border: 1px dashed #c4b5fd; border-radius: 12px; padding: 10px 12px 2px; margin-bottom: 14px; background: #fcfbff; }
+.pacote-titulo { font-weight: 700; font-size: 0.9rem; color: var(--primary-dark); margin-bottom: 8px; }
+.pacote-titulo span { font-weight: 500; color: var(--text-muted); font-size: 0.8rem; }
+.pacote-resultado { font-size: 0.85rem; line-height: 1.5; padding: 0 0 10px; color: var(--text); }
+
 /* ===== RANKINGS ===== */
 .ranking-periodo { font-weight: 500; font-size: 0.8rem; color: var(--text-muted); }
 .ranking-abas { display: flex; gap: 6px; margin: 4px 0 8px; }
